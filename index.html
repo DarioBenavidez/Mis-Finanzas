@@ -3,243 +3,244 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Gold - Dario v8 Pro</title>
+    <title>Master Build - Finanzas Darío</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .card-gold { background: white; border-radius: 25px; border: 1px solid #f1f5f9; padding: 20px; transition: 0.3s; }
-        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; border-radius: 12px; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .card-gold { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #f1f5f9; }
+        .btn-action { background: #FFD700; color: black; font-weight: bold; border-radius: 10px; transition: 0.2s; }
+        .btn-action:hover { background: #e6c200; transform: translateY(-2px); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
         .modal.active { display: flex; }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .cuota-badge { background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 800; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
 
-    <div id="invoice-modal" class="modal" onclick="this.classList.remove('active')">
-        <div class="max-w-4xl w-full p-4 flex flex-col items-center">
-            <img id="modal-img" src="" class="max-w-full max-h-[80vh] rounded-lg shadow-2xl mb-4 hidden">
-            <iframe id="modal-pdf" src="" class="w-full h-[80vh] rounded-lg hidden"></iframe>
-            <button class="bg-white px-6 py-2 rounded-full font-bold">CERRAR</button>
+    <div id="file-modal" class="modal" onclick="this.classList.remove('active')">
+        <div class="max-w-4xl w-full bg-white p-2 rounded-lg">
+            <img id="modal-img" src="" class="max-w-full max-h-[80vh] mx-auto hidden">
+            <iframe id="modal-pdf" src="" class="w-full h-[80vh] hidden"></iframe>
         </div>
     </div>
 
-    <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50 shadow-sm">
+    <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="font-black text-2xl italic uppercase">FINANZAS <span class="text-yellow-500">DARIO</span></h1>
-            <div id="dolar-info" class="text-[10px] font-black text-slate-400 italic">DÓLAR: $1250</div>
-            <div class="flex gap-4 text-[10px] font-black uppercase">
+            <h1 class="font-black text-xl italic uppercase">MASTER <span class="text-yellow-500">BUILD</span></h1>
+            <div id="dolar-val" class="text-xs font-bold text-slate-500 italic">DÓLAR: $1250</div>
+            <div class="flex gap-3 text-[10px] font-black uppercase">
                 <button onclick="showTab('dashboard')">Inicio</button>
                 <button onclick="showTab('servicios')">Servicios</button>
-                <button onclick="showTab('creditos')">Deudas</button>
+                <button onclick="showTab('deudas')">Deudas</button>
                 <button onclick="showTab('ahorros')">Ahorros</button>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-6xl mx-auto p-4 md:p-6">
+    <main class="max-w-6xl mx-auto p-4">
         
         <section id="dashboard" class="tab-content active">
-            <div id="bank-cards" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"></div>
+            <div id="bank-grid" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6"></div>
+            
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="card-gold lg:col-span-2"><canvas id="projectionChart" height="150"></canvas></div>
-                <div class="card-gold border-2 border-yellow-400 text-center flex flex-col justify-center">
-                    <p class="text-[10px] font-black text-slate-400 uppercase mb-1 italic">Saldo Real</p>
-                    <p id="total-cash" class="text-5xl font-black tracking-tighter mb-4">$ 0</p>
-                    <div class="flex gap-2">
-                        <button onclick="copiarDatos()" class="flex-1 btn-yellow py-3 text-[10px] uppercase shadow-md">Copiar</button>
-                        <button onclick="importarDatos()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold uppercase">Pegar</button>
+                <div class="card-gold lg:col-span-2">
+                    <canvas id="mainChart" height="120"></canvas>
+                </div>
+                <div class="card-gold flex flex-col justify-center items-center border-2 border-yellow-400">
+                    <p class="text-[10px] font-black text-slate-400 uppercase italic mb-2">Saldo Real Disponible</p>
+                    <h2 id="total-balance" class="text-4xl font-black tracking-tighter mb-6">$ 0</h2>
+                    <div class="flex gap-2 w-full">
+                        <button onclick="copyData()" class="flex-1 btn-action py-3 text-[10px] uppercase">Backup</button>
+                        <button onclick="importData()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold uppercase">Restaurar</button>
                     </div>
                 </div>
             </div>
         </section>
 
         <section id="servicios" class="tab-content">
-            <h2 class="text-2xl font-black italic uppercase mb-6 text-slate-400">Servicios Mensuales</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8" id="services-grid"></div>
+            <h2 class="text-xl font-black italic uppercase mb-4 text-slate-400">Gestión de Servicios</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8" id="serv-grid"></div>
             <div class="card-gold">
-                <h3 class="font-black uppercase italic mb-4">Comprobantes Guardados</h3>
-                <div id="invoice-history" class="space-y-3"></div>
+                <h3 class="font-black uppercase italic text-sm mb-4 border-b pb-2">Historial de Pagos</h3>
+                <div id="payment-history" class="space-y-2"></div>
             </div>
         </section>
 
-        <section id="creditos" class="tab-content">
-            <div class="flex justify-between mb-8">
-                <h2 class="text-2xl font-black italic uppercase">Compromisos de Pago</h2>
-                <div class="flex gap-2">
-                    <button onclick="addItem('credits', true)" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">+ Gasto Fijo</button>
-                    <button onclick="addItem('credits', false)" class="btn-yellow px-4 py-2 text-[10px] uppercase">+ En Cuotas</button>
-                </div>
+        <section id="deudas" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black italic uppercase">Compromisos</h2>
+                <button onclick="addCredit()" class="btn-action px-4 py-2 text-[10px] uppercase">+ Nueva Deuda</button>
             </div>
-            <div id="credit-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="credit-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
         <section id="ahorros" class="tab-content">
-            <div class="flex justify-between mb-8">
-                <h2 class="text-2xl font-black italic uppercase text-green-700">Huchas</h2>
-                <button onclick="addItem('savings')" class="bg-green-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase">+ Nueva Meta</button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black italic uppercase text-green-600">Huchas / Ahorros</h2>
+                <button onclick="addSaving()" class="bg-green-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">+ Nuevo Objetivo</button>
             </div>
-            <div id="savings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="savings-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
+
     </main>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('finanzas_gold_v1')) || {
-            banks: [{name:"M. PAGO", bal:0}, {name:"ASTROPAY", bal:0}, {name:"BBVA", bal:0}, {name:"SANTANDER", bal:0}, {name:"YPF", bal:0}],
-            credits: [], savings: [], services: [], serviceStatus: {Luz: 0, Agua: 0, Gas: 0, Internet: 0}
+        // PERSISTENCIA DE DATOS
+        let data = JSON.parse(localStorage.getItem('master_build_db')) || {
+            banks: [{n:"M. Pago", v:0}, {n:"BBVA", v:0}, {n:"Santander", v:0}, {n:"AstroPay", v:0}, {n:"Efectivo", v:0}],
+            credits: [], savings: [], payments: [],
+            status: {Luz: 0, Agua: 0, Gas: 0, Internet: 0}
         };
 
-        let cotizacionDolar = 1250;
+        let bluePrice = 1250;
 
-        function init() { fetchDolar(); renderAll(); }
+        function init() { getDolar(); render(); }
 
-        function renderAll() {
-            // BANCOS
-            document.getElementById('bank-cards').innerHTML = db.banks.map((b, i) => `
-                <div class="card-gold shadow-sm">
-                    <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1">${b.name}</p>
-                    <div class="flex items-center text-2xl font-black">$<input type="number" value="${b.bal}" oninput="updateBank(${i}, this.value)" class="w-full bg-transparent focus:outline-none"></div>
+        function render() {
+            // Bancos
+            document.getElementById('bank-grid').innerHTML = data.banks.map((b, i) => `
+                <div class="card-gold">
+                    <p class="text-[9px] font-black text-slate-400 uppercase mb-1">${b.n}</p>
+                    <div class="flex font-black text-xl">$<input type="number" value="${b.v}" oninput="uBank(${i},this.value)" class="w-full bg-transparent outline-none"></div>
                 </div>`).join('');
 
-            // SERVICIOS
-            const servNames = ['Luz', 'Agua', 'Gas', 'Internet'];
-            document.getElementById('services-grid').innerHTML = servNames.map(name => `
+            // Servicios
+            const sNames = ['Luz', 'Agua', 'Gas', 'Internet'];
+            document.getElementById('serv-grid').innerHTML = sNames.map(n => `
                 <div class="card-gold flex justify-between items-center">
                     <div>
-                        <p class="text-[10px] font-black text-slate-400 uppercase italic">${name}</p>
-                        <input type="number" value="${db.serviceStatus[name] || ''}" oninput="updateService('${name}', this.value)" class="text-3xl font-black text-yellow-500 bg-transparent focus:outline-none w-32" placeholder="0">
+                        <p class="text-[10px] font-black text-slate-400 uppercase italic">${n}</p>
+                        <input type="number" value="${data.status[n] || ''}" oninput="uServ('${n}',this.value)" class="text-2xl font-black text-yellow-500 bg-transparent outline-none w-28" placeholder="0">
                     </div>
-                    <button onclick="triggerUpload('${name}')" class="bg-slate-100 p-4 rounded-full hover:bg-yellow-400 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <button onclick="upFile('${n}')" class="bg-slate-100 p-3 rounded-full hover:bg-yellow-400 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-width="2"/></svg>
                     </button>
                 </div>`).join('');
 
-            // HISTORIAL COMPROBANTES
-            document.getElementById('invoice-history').innerHTML = (db.services || []).slice().reverse().map((s, i) => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center font-black text-[10px] text-white">${s.name[0]}</div>
-                        <div><p class="font-black text-xs uppercase">${s.name}</p><p class="text-[8px] font-bold text-slate-400">${s.date}</p></div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="font-black text-sm">$ ${parseFloat(s.amount).toLocaleString('es-AR')}</span>
-                        <button onclick="viewFile('${s.fileData}')" class="text-blue-500">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                        </button>
-                        <button onclick="deleteGeneral('services', ${db.services.length - 1 - i})" class="text-slate-300">✕</button>
+            // Historial
+            document.getElementById('payment-history').innerHTML = data.payments.slice().reverse().map((p, i) => `
+                <div class="flex justify-between items-center p-2 bg-white rounded-xl border border-slate-100 text-xs">
+                    <span class="font-bold uppercase">${p.n} - ${p.d}</span>
+                    <div class="flex items-center gap-3 font-black">
+                        $${p.a.toLocaleString()}
+                        <button onclick="viewFile('${p.f}')" class="text-blue-500 italic">Ver</button>
+                        <button onclick="delPay(${data.payments.length-1-i})" class="text-slate-300">✕</button>
                     </div>
                 </div>`).join('');
 
-            // DEUDAS (CON CUOTAS RECUPERADAS)
-            document.getElementById('credit-list').innerHTML = db.credits.map((c, i) => `
-                <div class="card-gold border-l-8 ${c.isFixed ? 'border-slate-800' : 'border-red-500'} flex justify-between items-center">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                            <p class="text-[10px] font-black text-slate-400 uppercase italic">${c.entidad}</p>
-                            ${!c.isFixed ? `<span class="cuota-badge" onclick="editCuotas(${i})">Restan ${c.cuotas || 1} cuotas</span>` : ''}
-                        </div>
-                        <input type="date" value="${c.vto || ''}" onchange="updateItem('credits', ${i}, 'vto', this.value)" class="text-[10px] font-bold bg-slate-50 p-1 rounded mt-1">
+            // Deudas
+            document.getElementById('credit-list').innerHTML = data.credits.map((c, i) => `
+                <div class="card-gold border-l-4 border-red-500 flex justify-between items-center">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase">${c.n}</p>
+                        <p class="text-[9px] font-bold text-red-400 italic">${c.q ? 'Restan ' + c.q + ' cuotas' : 'Gasto Fijo'}</p>
                     </div>
                     <div class="text-right">
-                        <div class="text-3xl font-black">${c.isUSD ? 'u$s' : '$'} <input type="number" value="${c.val}" oninput="updateItem('credits', ${i}, 'val', this.value)" class="w-24 text-right bg-transparent focus:outline-none"></div>
-                        <div class="flex gap-2 justify-end mt-1 text-[9px] font-black uppercase italic">
-                            <button onclick="toggleUSD('credits', ${i})" class="text-blue-500">USD/ARS</button>
-                            <button onclick="deleteGeneral('credits', ${i})" class="text-slate-300">Borrar</button>
+                        <div class="text-2xl font-black">${c.usd ? 'u$s' : '$'} <input type="number" value="${c.v}" oninput="uItem('credits',${i},this.value)" class="w-20 text-right bg-transparent outline-none"></div>
+                        <div class="flex gap-2 justify-end text-[8px] font-black uppercase">
+                            <button onclick="tUsd(${i})" class="text-blue-500 italic">${c.usd ? 'Pasar a ARS' : 'Pasar a USD'}</button>
+                            <button onclick="delItem('credits',${i})" class="text-slate-300">Borrar</button>
                         </div>
                     </div>
                 </div>`).join('');
 
-            // AHORROS
-            document.getElementById('savings-grid').innerHTML = db.savings.map((s, i) => `
-                <div class="card-gold border-l-8 border-green-500 flex justify-between items-center">
-                    <span class="font-black text-xl uppercase italic">${s.name}</span>
+            // Ahorros
+            document.getElementById('savings-list').innerHTML = data.savings.map((s, i) => `
+                <div class="card-gold border-l-4 border-green-500 flex justify-between items-center">
+                    <span class="font-black text-sm uppercase italic">${s.n}</span>
                     <div class="text-right">
-                        <div class="text-3xl font-black text-green-700">${s.isUSD ? 'u$s' : '$'} <input type="number" value="${s.val}" oninput="updateItem('savings', ${i}, 'val', this.value)" class="w-24 text-right bg-transparent focus:outline-none"></div>
-                        <button onclick="toggleUSD('savings', ${i})" class="text-[9px] font-black text-blue-500 uppercase italic">Convertir</button>
+                        <div class="text-2xl font-black text-green-700">$ <input type="number" value="${s.v}" oninput="uItem('savings',${i},this.value)" class="w-24 text-right bg-transparent outline-none"></div>
+                        <button onclick="delItem('savings',${i})" class="text-[8px] font-black text-slate-300 uppercase">Eliminar</button>
                     </div>
                 </div>`).join('');
 
-            actualizarTotales();
+            updateTotal();
         }
 
-        // LÓGICA DE NEGOCIO
-        function updateBank(i, v) { db.banks[i].bal = parseFloat(v) || 0; save(); actualizarTotales(); }
-        function updateService(n, v) { db.serviceStatus[n] = parseFloat(v) || 0; save(); actualizarTotales(); }
-        function updateItem(k, i, f, v) { db[k][i][f] = v; save(); actualizarTotales(); }
-        function toggleUSD(k, i) { db[k][i].isUSD = !db[k][i].isUSD; save(); renderAll(); }
-        function editCuotas(i) { const n = prompt("¿Cuántas cuotas restan?"); if(n) { db.credits[i].cuotas = parseInt(n); save(); renderAll(); } }
-        
-        function addItem(k, isFixed = true) {
+        // MOTOR DE CÁLCULO
+        function uBank(i, v) { data.banks[i].v = parseFloat(v) || 0; save(); updateTotal(); }
+        function uServ(n, v) { data.status[n] = parseFloat(v) || 0; save(); updateTotal(); }
+        function uItem(k, i, v) { data[k][i].v = parseFloat(v) || 0; save(); updateTotal(); }
+        function tUsd(i) { data.credits[i].usd = !data.credits[i].usd; save(); render(); }
+
+        function addCredit() {
             const n = prompt("Nombre:");
-            if(n) {
-                const item = { entidad: n, name: n, val: 0, isFixed, isUSD: false, vto: '' };
-                if(!isFixed) item.cuotas = prompt("¿Cuántas cuotas?");
-                db[k].push(item);
-                save(); renderAll();
+            if(n) { 
+                const q = prompt("Cuotas (dejar vacío si es fijo):");
+                data.credits.push({n, v:0, q, usd: false}); 
+                save(); render(); 
             }
         }
 
-        function triggerUpload(name) {
+        function addSaving() {
+            const n = prompt("Meta de ahorro:");
+            if(n) { data.savings.push({n, v:0}); save(); render(); }
+        }
+
+        function upFile(n) {
             const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*,application/pdf';
+            input.type = 'file';
             input.onchange = e => {
-                const file = e.target.files[0];
-                const amt = prompt("Monto pagado:");
-                if(!amt) return;
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    db.services.push({ name, amount: parseFloat(amt), date: new Date().toLocaleDateString(), fileData: ev.target.result });
-                    save(); renderAll();
+                const f = e.target.files[0];
+                const a = prompt("Monto pagado:");
+                if(!a) return;
+                const r = new FileReader();
+                r.onload = ev => {
+                    data.payments.push({n, a: parseFloat(a), d: new Date().toLocaleDateString(), f: ev.target.result});
+                    save(); render();
                 };
-                reader.readAsDataURL(file);
+                r.readAsDataURL(f);
             };
             input.click();
         }
 
-        function viewFile(data) {
-            const m = document.getElementById('invoice-modal');
+        function viewFile(f) {
+            const m = document.getElementById('file-modal');
             const img = document.getElementById('modal-img');
             const pdf = document.getElementById('modal-pdf');
             img.classList.add('hidden'); pdf.classList.add('hidden');
-            if(data.includes('pdf')) { pdf.src = data; pdf.classList.remove('hidden'); }
-            else { img.src = data; img.classList.remove('hidden'); }
+            if(f.includes('pdf')) { pdf.src = f; pdf.classList.remove('hidden'); }
+            else { img.src = f; img.classList.remove('hidden'); }
             m.classList.add('active');
         }
 
-        async function fetchDolar() {
+        async function getDolar() {
             try {
                 const r = await fetch('https://argentinadatos.com/api/v1/cotizaciones/dolares');
                 const d = await r.json();
-                cotizacionDolar = d.find(x => x.casa === "blue")?.venta || 1250;
-                document.getElementById('dolar-info').innerText = `DÓLAR BLUE: $${cotizacionDolar}`;
-                actualizarTotales();
+                bluePrice = d.find(x => x.casa === "blue")?.venta || 1250;
+                document.getElementById('dolar-val').innerText = `DÓLAR BLUE: $${bluePrice}`;
+                updateTotal();
             } catch(e) {}
         }
 
-        function actualizarTotales() {
-            const tBancos = db.banks.reduce((a, b) => a + (b.bal || 0), 0);
-            const tServ = Object.values(db.serviceStatus).reduce((a, v) => a + (v || 0), 0);
-            const tDeud = db.credits.reduce((a, c) => a + (c.isUSD ? (c.val * cotizacionDolar) : parseFloat(c.val || 0)), 0);
-            const tAhor = db.savings.reduce((a, s) => a + (s.isUSD ? (s.val * cotizacionDolar) : parseFloat(s.val || 0)), 0);
-            const saldo = tBancos - tServ - tDeud - tAhor;
-            document.getElementById('total-cash').innerText = `$ ${saldo.toLocaleString('es-AR')}`;
-            updateCharts(saldo);
+        function updateTotal() {
+            const tB = data.banks.reduce((a, b) => a + (b.v || 0), 0);
+            const tS = Object.values(data.status).reduce((a, v) => a + (v || 0), 0);
+            const tD = data.credits.reduce((a, c) => a + (c.usd ? (c.v * bluePrice) : (c.v || 0)), 0);
+            const tA = data.savings.reduce((a, s) => a + (s.v || 0), 0);
+            
+            const saldo = tB - tS - tD - tA;
+            document.getElementById('total-balance').innerText = `$ ${saldo.toLocaleString('es-AR')}`;
+            
+            // Gráfico simple
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if(window.myCh) window.myCh.destroy();
+            window.myCh = new Chart(ctx, {
+                type: 'line',
+                data: { labels: ['','','','','',''], datasets: [{ data: [saldo*0.8, saldo*0.9, saldo, saldo, saldo, saldo], borderColor: '#FFD700', borderWidth: 4, tension: 0.4, pointRadius: 0 }] },
+                options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
+            });
         }
 
-        function updateCharts(t) {
-            const ctx = document.getElementById('projectionChart').getContext('2d');
-            if(window.ch) window.ch.destroy();
-            window.ch = new Chart(ctx, { type: 'line', data: { labels: ['E','F','M','A','M','J'], datasets: [{ data: Array(6).fill(t), borderColor: '#FFD700', borderWidth: 6, tension: 0.4, pointRadius: 0 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } } });
-        }
-
-        function save() { localStorage.setItem('finanzas_gold_v1', JSON.stringify(db)); }
-        function deleteGeneral(k, i) { if(confirm("¿Eliminar?")) { db[k].splice(i, 1); save(); renderAll(); } }
+        function save() { localStorage.setItem('master_build_db', JSON.stringify(data)); }
+        function delItem(k, i) { if(confirm("¿Borrar?")) { data[k].splice(i, 1); save(); render(); } }
+        function delPay(i) { data.payments.splice(i, 1); save(); render(); }
         function showTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function copiarDatos() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Copiado ✅"); }
-        function importarDatos() { const d = prompt("Pega el código:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
+        function copyData() { navigator.clipboard.writeText(JSON.stringify(data)); alert("Backup copiado al portapapeles"); }
+        function importData() { const d = prompt("Pega el backup:"); if(d) { data = JSON.parse(d); save(); location.reload(); } }
 
         window.onload = init;
     </script>
