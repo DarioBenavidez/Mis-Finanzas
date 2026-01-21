@@ -10,10 +10,10 @@
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .bg-primary { background-color: #FFD700; } /* Amarillo Oro */
-        .text-primary { color: #8B8000; }
-        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; border-radius: 8px; transition: all 0.3s; }
-        .btn-yellow:hover { background-color: #FACC15; transform: translateY(-1px); }
+        .bg-primary { background-color: #FFD700; }
+        .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; border-radius: 12px; transition: all 0.3s; }
+        .btn-yellow:hover { background-color: #FACC15; transform: scale(1.02); }
+        .btn-black { background-color: #000; color: #fff; font-weight: bold; border-radius: 12px; }
     </style>
 </head>
 <body class="bg-white text-slate-900">
@@ -21,11 +21,11 @@
     <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <h1 class="font-black text-2xl tracking-tighter" id="user-header">FINANZAS <span class="text-yellow-500">GOLD</span></h1>
-            <div class="flex gap-4 text-xs font-bold uppercase">
+            <div class="flex gap-3 text-xs font-bold uppercase">
                 <button onclick="showTab('dashboard')" class="hover:text-yellow-600">Inicio</button>
                 <button onclick="showTab('servicios')" class="hover:text-yellow-600">Servicios</button>
                 <button onclick="showTab('creditos')" class="hover:text-yellow-600">Deudas</button>
-                <button onclick="exportToExcel()" class="bg-black text-white px-3 py-1 rounded">Excel</button>
+                <button onclick="exportToExcel()" class="bg-black text-white px-3 py-1 rounded-lg">Excel</button>
             </div>
         </div>
     </nav>
@@ -40,12 +40,20 @@
                     <h3 class="font-bold mb-4 text-slate-500 uppercase text-xs tracking-widest">Proyección de disponibilidad</h3>
                     <canvas id="projectionChart" height="130"></canvas>
                 </div>
-                <div class="bg-white p-6 rounded-3xl border-2 border-yellow-400">
-                    <h3 class="font-bold mb-2">Hola, <span id="user-display">Usuario</span></h3>
-                    <input type="text" id="username-input" onchange="updateUser(this.value)" placeholder="Tu nombre" class="w-full border-b-2 border-slate-100 p-2 mb-4 focus:outline-none focus:border-yellow-400">
-                    <div class="p-4 rounded-2xl bg-yellow-50">
-                        <p class="text-[10px] font-black uppercase text-yellow-700">Total en cuentas</p>
+
+                <div class="bg-white p-6 rounded-3xl border-2 border-yellow-400 shadow-xl">
+                    <h3 class="font-bold text-lg mb-4">Ajustes de Cuenta</h3>
+                    <input type="text" id="username-input" oninput="updateUser(this.value)" placeholder="Tu nombre" class="w-full border-b-2 border-slate-100 p-2 mb-6 focus:outline-none focus:border-yellow-400 font-bold">
+                    
+                    <div class="p-4 rounded-2xl bg-yellow-50 mb-6 text-center">
+                        <p class="text-[10px] font-black uppercase text-yellow-700">Total Consolidado</p>
                         <p id="total-cash" class="text-3xl font-black">$0</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase text-center">Sincronización manual</p>
+                        <button onclick="copiarDatos()" class="w-full btn-yellow py-3 text-sm">📤 COPIAR DATOS PARA CELULAR</button>
+                        <button onclick="importarDatos()" class="w-full btn-black py-3 text-sm">📥 PEGAR DATOS DE OTRO DISP.</button>
                     </div>
                 </div>
             </div>
@@ -67,13 +75,8 @@
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead class="text-slate-400 text-xs uppercase text-left">
-                            <tr class="border-b">
-                                <th class="p-4">Servicio</th>
-                                <th class="p-4">Fecha</th>
-                                <th class="p-4 text-right">Monto</th>
-                                <th class="p-4 text-center"></th>
-                            </tr>
+                        <thead class="text-slate-400 text-xs uppercase text-left border-b">
+                            <tr><th class="p-4">Servicio</th><th class="p-4">Fecha</th><th class="p-4 text-right">Monto</th><th class="p-4"></th></tr>
                         </thead>
                         <tbody id="services-table-body" class="text-sm"></tbody>
                     </table>
@@ -84,12 +87,12 @@
         <section id="creditos" class="tab-content">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <h2 class="text-xl font-black mb-4">CRÉDITOS Y TARJETAS</h2>
+                    <h2 class="text-xl font-black mb-4 uppercase">Créditos y Tarjetas</h2>
                     <div id="credit-list" class="space-y-4"></div>
                     <button onclick="addCredit()" class="w-full mt-6 py-3 border-2 border-yellow-400 rounded-2xl font-bold hover:bg-yellow-50 transition">+ AGREGAR CRÉDITO</button>
                 </div>
                 <div>
-                    <h2 class="text-xl font-black mb-4">FIJOS MENSUALES</h2>
+                    <h2 class="text-xl font-black mb-4 uppercase">Fijos Mensuales</h2>
                     <div id="fixed-items-list" class="space-y-2"></div>
                     <button onclick="addFixedItem()" class="w-full mt-4 bg-slate-900 text-white py-3 rounded-2xl font-bold text-sm">+ AGREGAR ÍTEM</button>
                 </div>
@@ -98,7 +101,7 @@
     </main>
 
     <script>
-        // LÓGICA DE DATOS (Misma estructura robusta anterior)
+        // MOTOR DE DATOS
         let db = JSON.parse(localStorage.getItem('finanzas_gold_v1')) || {
             user: "Usuario",
             banks: [
@@ -108,18 +111,55 @@
             fixedItems: [], services: [], credits: [], events: [] 
         };
 
-        function save() { localStorage.setItem('finanzas_gold_v1', JSON.stringify(db)); render(); }
+        function save() {
+            localStorage.setItem('finanzas_gold_v1', JSON.stringify(db));
+            render();
+        }
+
+        // FUNCIONES DE SINCRONIZACIÓN
+        function copiarDatos() {
+            const dataStr = JSON.stringify(db);
+            navigator.clipboard.writeText(dataStr).then(() => {
+                alert("✅ ¡Éxito! Tus datos se han copiado al portapapeles. Ahora ve a tu otro dispositivo (celular/PC), abre tu app y presiona 'PEGAR DATOS'.");
+            });
+        }
+
+        function importarDatos() {
+            const dataStr = prompt("Pega aquí el código de datos que copiaste de tu otro dispositivo:");
+            if(dataStr) {
+                try {
+                    const parsed = JSON.parse(dataStr);
+                    if(parsed.banks) {
+                        db = parsed;
+                        save();
+                        alert("✅ Datos importados correctamente.");
+                        location.reload();
+                    }
+                } catch(e) {
+                    alert("❌ El código pegado no es válido. Asegúrate de copiarlo bien.");
+                }
+            }
+        }
+
+        // RENDERIZADO MEJORADO
         function showTab(id) { 
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
 
-        // CARGA
         function updateUser(v) { db.user = v; save(); }
-        function updateBank(i, v) { db.banks[i].bal = parseFloat(v) || 0; save(); }
+        
+        // Guardado instantáneo para bancos
+        function updateBank(i, v) { 
+            db.banks[i].bal = parseFloat(v) || 0; 
+            localStorage.setItem('finanzas_gold_v1', JSON.stringify(db));
+            const total = db.banks.reduce((acc, b) => acc + b.bal, 0);
+            document.getElementById('total-cash').innerText = `$ ${total.toLocaleString()}`;
+            updateChart(total);
+        }
 
         function addServicePayment() {
-            const name = prompt("Servicio (Luz, Gas, etc):");
+            const name = prompt("Servicio:");
             const amount = parseFloat(prompt("Monto:"));
             const date = prompt("Fecha (MM/AAAA):", (new Date().getMonth()+1)+"/"+new Date().getFullYear());
             if(name && amount) { db.services.push({name, amount, date}); save(); }
@@ -135,12 +175,12 @@
         function addFixedItem() {
             const name = prompt("Concepto:");
             const amount = parseFloat(prompt("Monto:"));
-            const type = confirm("¿Es INGRESO? (Aceptar=SÍ / Cancelar=GASTO)") ? 'in' : 'out';
+            const type = confirm("¿Es INGRESO? (OK=SÍ / Cancelar=GASTO)") ? 'in' : 'out';
             if(name && amount) { db.fixedItems.push({name, amount, type}); save(); }
         }
 
         function addEvent() {
-            const name = prompt("Nombre del Evento:");
+            const name = prompt("Nombre:");
             const budget = parseFloat(prompt("Presupuesto:"));
             if(name && budget) { db.events.push({name, budget}); save(); }
         }
@@ -148,8 +188,8 @@
         function render() {
             document.getElementById('user-header').innerHTML = `FINANZAS <span class="text-yellow-500">${db.user.toUpperCase()}</span>`;
             document.getElementById('user-display').innerText = db.user;
+            document.getElementById('username-input').value = db.user;
             
-            // Bancos
             const bankContainer = document.getElementById('bank-cards');
             bankContainer.innerHTML = '';
             let totalCash = 0;
@@ -158,31 +198,28 @@
                 bankContainer.innerHTML += `
                     <div class="bg-white p-4 rounded-2xl border-2 border-slate-100 shadow-sm">
                         <p class="text-[9px] font-black text-slate-400 uppercase mb-1">${b.name}</p>
-                        <input type="number" onchange="updateBank(${i}, this.value)" value="${b.bal}" class="w-full font-black text-lg focus:outline-none bg-transparent">
+                        <input type="number" oninput="updateBank(${i}, this.value)" value="${b.bal}" class="w-full font-black text-lg focus:outline-none bg-transparent">
                     </div>
                 `;
             });
             document.getElementById('total-cash').innerText = `$ ${totalCash.toLocaleString()}`;
 
-            // Servicios
             document.getElementById('services-table-body').innerHTML = db.services.slice().reverse().map((s, i) => `
                 <tr class="border-b border-slate-50">
                     <td class="p-4 font-bold">${s.name}</td>
                     <td class="p-4 text-slate-400">${s.date}</td>
                     <td class="p-4 text-right font-black">$${s.amount.toLocaleString()}</td>
-                    <td class="p-4 text-center"><button onclick="deleteService(${db.services.length-1-i})" class="text-slate-300 hover:text-red-500">✕</button></td>
+                    <td class="p-4 text-center"><button onclick="deleteService(${db.services.length-1-i})" class="text-slate-300 hover:text-red-500 font-bold">✕</button></td>
                 </tr>
             `).join('');
 
-            // Deudas
             document.getElementById('credit-list').innerHTML = db.credits.map(c => `
-                <div class="p-4 rounded-2xl bg-slate-50 flex justify-between items-center">
+                <div class="p-4 rounded-2xl bg-slate-50 flex justify-between items-center border-l-4 border-red-500">
                     <div><p class="font-black text-xs uppercase">${c.name}</p><p class="text-[10px] text-slate-400">${c.cuotasFaltantes} cuotas restantes</p></div>
                     <p class="font-black text-red-600">$${c.montoCuota.toLocaleString()}</p>
                 </div>
             `).join('');
 
-            // Fijos
             document.getElementById('fixed-items-list').innerHTML = db.fixedItems.map(f => `
                 <div class="flex justify-between p-3 border-b border-slate-50 text-sm">
                     <span class="font-bold text-slate-500">${f.name}</span>
@@ -190,11 +227,10 @@
                 </div>
             `).join('');
 
-            // Eventos
             document.getElementById('events-grid').innerHTML = db.events.map(ev => `
                 <div class="bg-yellow-400 p-5 rounded-3xl shadow-md">
                     <h4 class="font-black text-black uppercase text-sm">${ev.name}</h4>
-                    <p class="text-xs font-bold text-yellow-900 mt-1">DISPONIBLE: $${ev.budget.toLocaleString()}</p>
+                    <p class="text-xs font-bold text-yellow-900 mt-1">LÍMITE: $${ev.budget.toLocaleString()}</p>
                 </div>
             `).join('');
 
@@ -216,7 +252,6 @@
                 data: {
                     labels: ['Mes 1', 'Mes 2', 'Mes 3', 'Mes 4', 'Mes 5', 'Mes 6'],
                     datasets: [{
-                        label: 'Efectivo Restante',
                         data: data,
                         borderColor: '#FFD700',
                         borderWidth: 4,
@@ -237,6 +272,9 @@
         }
 
         render();
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
