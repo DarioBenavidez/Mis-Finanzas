@@ -33,7 +33,8 @@
     <main class="max-w-6xl mx-auto p-4 md:p-6">
         <section id="dashboard" class="tab-content active">
             <h3 class="font-black text-xs text-slate-400 uppercase tracking-widest mb-4">Mis Entidades Bancarias</h3>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" id="bank-cards"></div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" id="bank-cards">
+                </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
@@ -42,8 +43,8 @@
                 </div>
 
                 <div class="bg-white p-6 rounded-3xl border-2 border-yellow-400 shadow-xl">
-                    <h3 class="font-bold text-lg mb-1">Ajustes de Cuenta</h3>
-                    <input type="text" id="username-input" oninput="updateUser(this.value)" class="w-full border-b-2 border-slate-100 p-2 mb-6 focus:outline-none focus:border-yellow-400 font-bold text-xl">
+                    <h3 class="font-bold text-lg mb-1 text-slate-500 uppercase text-xs">Ajustes</h3>
+                    <input type="text" id="username-input" oninput="updateUser(this.value)" placeholder="Nombre" class="w-full border-b-2 border-slate-100 p-2 mb-6 focus:outline-none focus:border-yellow-400 font-bold text-xl">
                     
                     <div class="p-5 rounded-2xl bg-yellow-50 border border-yellow-100 mb-6 text-center">
                         <p class="text-[10px] font-black uppercase text-yellow-700 tracking-widest">Total Consolidado</p>
@@ -51,8 +52,8 @@
                     </div>
 
                     <div class="space-y-3">
-                        <button onclick="copiarDatos()" class="w-full btn-yellow py-4 text-xs shadow-md">📤 COPIAR DATOS PARA CELULAR</button>
-                        <button onclick="importarDatos()" class="w-full bg-black text-white font-bold py-4 text-xs rounded-xl hover:bg-slate-800 transition">📥 PEGAR DATOS DE OTRO DISP.</button>
+                        <button onclick="copiarDatos()" class="w-full btn-yellow py-4 text-xs shadow-md uppercase">📤 Copiar datos de esta Mac</button>
+                        <button onclick="importarDatos()" class="w-full bg-black text-white font-bold py-4 text-xs rounded-xl hover:bg-slate-800 transition uppercase">📥 Pegar datos del Celular</button>
                     </div>
                 </div>
             </div>
@@ -61,13 +62,13 @@
         <section id="servicios" class="tab-content">
              <div class="bg-white p-6 rounded-3xl shadow-sm">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-black">HISTORIAL DE SERVICIOS</h2>
-                    <button onclick="addServicePayment()" class="btn-yellow px-6 py-3">+ CARGAR FACTURA</button>
+                    <h2 class="text-2xl font-black italic">SERVICIOS PAGOS</h2>
+                    <button onclick="addServicePayment()" class="btn-yellow px-6 py-3 uppercase text-xs tracking-tighter">+ Nueva Factura</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="text-slate-400 text-xs uppercase border-b">
-                            <tr><th class="p-4">Servicio</th><th class="p-4">Fecha</th><th class="p-4 text-right">Monto</th><th class="p-4"></th></tr>
+                            <tr><th class="p-4">Detalle</th><th class="p-4">Fecha</th><th class="p-4 text-right">Monto</th><th class="p-4"></th></tr>
                         </thead>
                         <tbody id="services-table-body" class="text-sm"></tbody>
                     </table>
@@ -78,41 +79,62 @@
         <section id="creditos" class="tab-content">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <h2 class="text-xl font-black mb-4 uppercase">Créditos y Tarjetas</h2>
+                    <h2 class="text-xl font-black mb-4 uppercase italic">Deudas y Tarjetas</h2>
                     <div id="credit-list" class="space-y-4"></div>
-                    <button onclick="addCredit()" class="w-full mt-6 py-4 border-2 border-yellow-400 rounded-2xl font-bold">+ AGREGAR CRÉDITO</button>
+                    <button onclick="addCredit()" class="w-full mt-6 py-4 border-2 border-yellow-400 rounded-2xl font-bold uppercase text-xs hover:bg-yellow-50">+ Agregar Cuotas</button>
                 </div>
                 <div>
-                    <h2 class="text-xl font-black mb-4 uppercase">Fijos Mensuales</h2>
+                    <h2 class="text-xl font-black mb-4 uppercase italic">Fijos Mensuales</h2>
                     <div id="fixed-items-list" class="space-y-2"></div>
-                    <button onclick="addFixedItem()" class="w-full mt-4 bg-slate-900 text-white py-4 rounded-2xl font-bold">+ AGREGAR ÍTEM</button>
+                    <button onclick="addFixedItem()" class="w-full mt-4 bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-xs">+ Agregar Fijo</button>
                 </div>
             </div>
         </section>
     </main>
 
     <script>
+        // BASE DE DATOS
         let db = JSON.parse(localStorage.getItem('finanzas_gold_v1')) || {
             user: "Dario",
-            banks: [{name: "M. PAGO", bal: 0}, {name: "ASTROPAY", bal: 0}, {name: "BBVA", bal: 0}, {name: "SANTANDER", bal: 0}, {name: "YPF", bal: 0}],
+            banks: [
+                {name: "M. PAGO", bal: 0}, {name: "ASTROPAY", bal: 0}, 
+                {name: "BBVA", bal: 0}, {name: "SANTANDER", bal: 0}, {name: "YPF", bal: 0}
+            ],
             fixedItems: [], services: [], credits: [], events: [] 
         };
 
-        function save() { localStorage.setItem('finanzas_gold_v1', JSON.stringify(db)); render(); }
-        
+        // GUARDADO SIN RE-RENDER (SOLUCIONA EL ERROR DEL CURSOR)
+        function updateBank(i, v) { 
+            db.banks[i].bal = parseFloat(v) || 0; 
+            localStorage.setItem('finanzas_gold_v1', JSON.stringify(db));
+            updateTotalsOnly(); 
+        }
+
+        function updateTotalsOnly() {
+            let total = db.banks.reduce((acc, b) => acc + b.bal, 0);
+            document.getElementById('total-cash').innerText = `$ ${total.toLocaleString()}`;
+            updateChart(total);
+        }
+
+        function save() {
+            localStorage.setItem('finanzas_gold_v1', JSON.stringify(db));
+            renderAll();
+        }
+
+        // SINCRONIZACIÓN
         function copiarDatos() {
             navigator.clipboard.writeText(JSON.stringify(db));
-            alert("✅ Código copiado. Pegalo en el otro dispositivo.");
+            alert("✅ Datos copiados. Ahora ve a tu celular y pégalos.");
         }
 
         function importarDatos() {
-            const dataStr = prompt("Pegá acá el código que copiaste de tu otro dispositivo:");
+            const dataStr = prompt("Pega el código aquí:");
             if(dataStr) {
                 try {
                     db = JSON.parse(dataStr);
                     save();
                     location.reload();
-                } catch(e) { alert("❌ Código inválido."); }
+                } catch(e) { alert("❌ Error al pegar."); }
             }
         }
 
@@ -121,37 +143,17 @@
             document.getElementById(id).classList.add('active');
         }
 
-        function updateBank(i, v) { 
-            db.banks[i].bal = parseFloat(v) || 0; 
-            save(); 
-        }
-
         function updateUser(v) { db.user = v; save(); }
 
-        function render() {
-            document.getElementById('user-header').innerHTML = `FINANZAS <span class="text-yellow-500">${db.user.toUpperCase()}</span>`;
-            document.getElementById('username-input').value = db.user;
-            
-            const bankContainer = document.getElementById('bank-cards');
-            bankContainer.innerHTML = '';
-            let totalCash = 0;
-            db.banks.forEach((b, i) => {
-                totalCash += b.bal;
-                bankContainer.innerHTML += `
-                    <div class="card-bank shadow-sm">
-                        <p class="text-[9px] font-black text-slate-400 uppercase mb-2">${b.name}</p>
-                        <input type="number" oninput="updateBank(${i}, this.value)" value="${b.bal}" class="w-full font-black text-xl focus:outline-none bg-transparent">
-                    </div>`;
-            });
-            document.getElementById('total-cash').innerText = `$ ${totalCash.toLocaleString()}`;
-            // (Aquí iría la lógica de los otros renders abreviada para no saturar)
+        // FUNCIONES DE AGREGAR
+        function addServicePayment() {
+            const name = prompt("Nombre del servicio:");
+            const amount = parseFloat(prompt("Monto:"));
+            if(name && amount) { db.services.push({name, amount, date: new Date().toLocaleDateString()}); save(); }
         }
-        
-        // Funciones extra (addService, etc) se mantienen iguales...
-        render();
-    </script>
-</body>
-</html>
+
+        function addCredit() {
+            const name = prompt("Banco/
 </body>
 </html>
     </script>
