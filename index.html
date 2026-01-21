@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Gold - Dario Pro v4</title>
+    <title>Finanzas Gold - Dario Master Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -12,6 +12,9 @@
         .card-bank { background: white; border: 2px solid #f1f5f9; border-radius: 20px; padding: 15px; }
         .btn-yellow { background-color: #FFD700; color: #000; font-weight: bold; border-radius: 12px; transition: 0.3s; }
         .alert-box { border-left: 8px solid #ef4444; background: #fef2f2; }
+        .event-card { background: #FFD700; padding: 20px; border-radius: 25px; box-shadow: 0 6px 0 #d4b500; }
+        .fixed-debt-border { border-left: 12px solid #64748b; }
+        .installment-debt-border { border-left: 12px solid #ef4444; }
         .saving-card { border-left: 12px solid #22c55e; background: #f0fdf4; }
         .editable-amount { transition: 0.2s; border-bottom: 2px solid transparent; width: 100%; font-weight: 900; }
         .editable-amount:focus { outline: none; border-bottom: 2px solid #000; background: rgba(0,0,0,0.05); border-radius: 4px; }
@@ -23,11 +26,10 @@
     <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50 shadow-sm">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <h1 class="font-black text-2xl tracking-tighter uppercase italic">FINANZAS <span class="text-yellow-500">DARIO</span></h1>
-            <div id="dolar-realtime" class="hidden md:flex gap-4 text-[10px] font-bold uppercase text-slate-400 italic">
-                Cargando dólar...
-            </div>
-            <div class="flex gap-4 text-[10px] font-black uppercase">
+            <div id="dolar-realtime" class="hidden md:flex gap-4 text-[10px] font-bold uppercase text-slate-400 italic">Dólar: Cargando...</div>
+            <div class="flex gap-3 text-[10px] font-black uppercase">
                 <button onclick="showTab('dashboard')">Inicio</button>
+                <button onclick="showTab('servicios')">Servicios</button>
                 <button onclick="showTab('creditos')">Deudas</button>
                 <button onclick="showTab('ahorros')">Ahorros</button>
             </div>
@@ -38,23 +40,20 @@
         
         <section id="dashboard" class="tab-content active">
             <div id="alertas-vencimiento" class="mb-6 space-y-2"></div>
-
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" id="bank-cards"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold mb-4 text-slate-400 uppercase text-[10px]">Proyección de Saldo</h3>
+                    <h3 class="font-bold mb-4 text-slate-400 uppercase text-[10px]">Saldo Proyectado</h3>
                     <canvas id="projectionChart" height="150"></canvas>
                 </div>
-
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold mb-4 text-slate-400 uppercase text-[10px]">Distribución de Gastos</h3>
+                    <h3 class="font-bold mb-4 text-slate-400 uppercase text-[10px]">Categorías</h3>
                     <canvas id="categoryChart"></canvas>
                 </div>
-                
                 <div class="bg-white p-6 rounded-3xl border-2 border-yellow-400 shadow-xl text-center">
                     <div class="p-5 rounded-2xl bg-white mb-4 border border-yellow-100 shadow-inner">
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1 italic">Saldo Real Disponible</p>
+                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1">Saldo Real Disponible</p>
                         <p id="total-cash" class="text-4xl font-black tracking-tighter">$ 0</p>
                     </div>
                     <div class="text-left space-y-1 mb-6 px-2 text-[10px] font-black uppercase">
@@ -63,19 +62,32 @@
                         <div class="flex justify-between text-blue-600"><span>Ahorros (-):</span> <span id="sum-savings">$ 0</span></div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="copiarDatos()" class="flex-1 btn-yellow py-3 text-[10px] uppercase shadow-md">📤 Copiar</button>
-                        <button onclick="importarDatos()" class="flex-1 bg-black text-white py-3 text-[10px] rounded-xl font-bold uppercase italic">📥 Pegar</button>
+                        <button onclick="copiarDatos()" class="flex-1 btn-yellow py-3 text-[10px] uppercase">📤 Copiar</button>
+                        <button onclick="importarDatos()" class="flex-1 bg-black text-white py-3 text-[10px] rounded-xl font-bold uppercase">📥 Pegar</button>
                     </div>
                 </div>
             </div>
+
+            <div class="mt-12">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-black text-xl italic uppercase italic">Eventos Especiales</h3>
+                    <button onclick="addEvent()" class="bg-yellow-400 px-6 py-2 rounded-full font-black text-[10px] uppercase">+ Nuevo Evento</button>
+                </div>
+                <div id="events-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+            </div>
+        </section>
+
+        <section id="servicios" class="tab-content">
+            <h2 class="text-2xl font-black uppercase italic mb-6">Servicios Mensuales</h2>
+            <div id="services-checklist" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"></div>
         </section>
 
         <section id="creditos" class="tab-content">
             <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black uppercase italic tracking-tighter">Compromisos y Vencimientos</h2>
+                <h2 class="text-2xl font-black uppercase italic">Compromisos</h2>
                 <div class="flex gap-2">
-                    <button onclick="addCredit(true)" class="bg-slate-800 text-white px-4 py-3 text-[10px] font-black rounded-xl uppercase">+ Gasto Fijo</button>
-                    <button onclick="addCredit(false)" class="btn-yellow px-4 py-3 text-[10px] uppercase shadow-md">+ Deuda Cuotas</button>
+                    <button onclick="addCredit(true)" class="bg-slate-800 text-white px-4 py-3 text-[10px] font-black rounded-xl uppercase">+ Fijo</button>
+                    <button onclick="addCredit(false)" class="btn-yellow px-4 py-3 text-[10px] uppercase shadow-md">+ Cuotas</button>
                 </div>
             </div>
             <div id="credit-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
@@ -83,12 +95,11 @@
 
         <section id="ahorros" class="tab-content">
             <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black uppercase italic text-green-700">Huchas de Ahorro</h2>
+                <h2 class="text-2xl font-black uppercase italic text-green-700">Ahorros</h2>
                 <button onclick="addSavingMeta()" class="bg-green-600 text-white px-6 py-3 text-[10px] font-black rounded-xl uppercase">+ Nueva Meta</button>
             </div>
             <div id="savings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </section>
-
     </main>
 
     <script>
@@ -99,19 +110,23 @@
             serviceStatus: {Luz: 0, Agua: 0, Gas: 0, Internet: 0}
         };
 
-        let cotizacionDolar = 1200; // Valor base por si falla la API
+        let cotizacionDolar = 1250;
 
         async function fetchDolar() {
+            const display = document.getElementById('dolar-realtime');
             try {
                 const res = await fetch('https://argentinadatos.com/api/v1/cotizaciones/dolares');
+                if (!res.ok) throw new Error();
                 const data = await res.json();
-                const blue = data.find(d => d.casa === "blue")?.venta || 1200;
-                const mep = data.find(d => d.casa === "mep")?.venta || 1150;
+                const blue = data.find(d => d.casa === "blue")?.venta || 1250;
                 cotizacionDolar = blue;
-                document.getElementById('dolar-realtime').innerHTML = `🔵 Blue: $${blue} | 🏛️ MEP: $${mep}`;
-                document.getElementById('dolar-realtime').classList.remove('hidden');
-                actualizarTotales();
-            } catch (e) { console.error("Error API Dolar", e); }
+                display.innerHTML = `Dólar Blue: $${blue}`;
+                display.classList.remove('hidden');
+            } catch (e) {
+                display.innerHTML = `Dólar (Manual): $${cotizacionDolar}`;
+                display.classList.remove('hidden');
+            }
+            actualizarTotales();
         }
 
         function init() {
@@ -130,35 +145,53 @@
         }
 
         function renderAll() {
-            // RENDER DEUDAS CON FECHA
+            // EVENTOS
+            document.getElementById('events-grid').innerHTML = db.events.map((ev, i) => `
+                <div class="event-card">
+                    <div class="flex justify-between items-start"><span class="font-black text-[10px] uppercase text-yellow-900 italic">${ev.name}</span><button onclick="deleteItem('events', ${i})">✕</button></div>
+                    <div class="flex items-center text-3xl font-black tracking-tighter mt-1">
+                        <span class="mr-1">$</span>
+                        <input type="number" value="${ev.budget}" oninput="updateGeneric('events', ${i}, 'budget', this.value)" class="editable-amount bg-transparent focus:outline-none">
+                    </div>
+                </div>`).join('');
+
+            // SERVICIOS
+            const labels = ['Luz', 'Agua', 'Gas', 'Internet'];
+            document.getElementById('services-checklist').innerHTML = labels.map(label => `
+                <div class="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <span class="font-black text-[10px] uppercase text-slate-500 italic">${label}</span>
+                    <input type="number" value="${db.serviceStatus[label] || ''}" oninput="updateServiceStatus('${label}', this.value)" class="w-32 bg-transparent text-right font-black text-yellow-600 focus:outline-none text-xl">
+                </div>`).join('');
+
+            // DEUDAS
             document.getElementById('credit-list').innerHTML = db.credits.map((c, i) => `
                 <div class="p-6 bg-white ${c.isFixed ? 'fixed-debt-border' : 'installment-debt-border'} shadow-sm rounded-3xl flex justify-between items-center">
-                    <div>
+                    <div class="flex-1">
                         <p class="text-[10px] font-black text-slate-400 uppercase italic">${c.entidad}</p>
-                        <input type="date" value="${c.vencimiento || ''}" onchange="updateGeneric('credits', ${i}, 'vencimiento', this.value)" class="text-[9px] font-bold text-slate-500 uppercase bg-slate-50 p-1 rounded">
+                        <input type="date" value="${c.vencimiento || ''}" onchange="updateGeneric('credits', ${i}, 'vencimiento', this.value)" class="text-[10px] font-bold text-slate-500 uppercase bg-slate-50 p-1 rounded mt-1">
                     </div>
                     <div class="text-right">
                         <div class="flex items-center justify-end text-3xl font-black">
                             <span>${c.isUSD ? 'u$s' : '$'}</span>
                             <input type="number" value="${c.cuota}" oninput="updateGeneric('credits', ${i}, 'cuota', this.value)" class="editable-amount w-32 text-right bg-transparent">
                         </div>
-                        <div class="flex gap-3 justify-end mt-2">
+                        <div class="flex gap-4 justify-end mt-2">
                             <button onclick="toggleCurrency('credits', ${i})" class="text-[9px] font-black text-blue-500 uppercase italic">USD/ARS</button>
                             <button onclick="deleteItem('credits', ${i})" class="text-[9px] font-black text-slate-300 uppercase">Eliminar</button>
                         </div>
                     </div>
                 </div>`).join('');
 
-            // RENDER AHORROS
+            // AHORROS
             document.getElementById('savings-grid').innerHTML = db.savings.map((s, i) => `
                 <div class="p-6 bg-white saving-card shadow-sm rounded-3xl flex justify-between items-center">
                     <div><p class="font-black text-xl uppercase italic">${s.name}</p></div>
                     <div class="text-right">
-                        <div class="flex items-center justify-end text-3xl font-black text-green-700 tracking-tighter">
+                        <div class="flex items-center justify-end text-3xl font-black text-green-700">
                             <span>${s.isUSD ? 'u$s' : '$'}</span>
                             <input type="number" value="${s.total}" oninput="updateGeneric('savings', ${i}, 'total', this.value)" class="editable-amount w-32 text-right bg-transparent">
                         </div>
-                        <button onclick="toggleCurrency('savings', ${i})" class="text-[9px] font-black text-blue-500 uppercase italic">Cambiar Moneda</button>
+                        <button onclick="toggleCurrency('savings', ${i})" class="text-[9px] font-black text-blue-500 uppercase italic">USD/ARS</button>
                     </div>
                 </div>`).join('');
 
@@ -175,13 +208,9 @@
                     const vto = new Date(c.vencimiento);
                     const diff = Math.ceil((vto - hoy) / (1000 * 60 * 60 * 24));
                     if (diff <= 5 && diff >= 0) {
-                        container.innerHTML += `<div class="p-4 alert-box rounded-2xl flex justify-between items-center">
-                            <p class="font-black text-[10px] uppercase">⚠️ Próximo Vencimiento: <span class="text-red-600">${c.entidad}</span> vence en ${diff} días</p>
-                        </div>`;
+                        container.innerHTML += `<div class="p-4 alert-box rounded-2xl font-black text-[10px] uppercase">⚠️ Próximo Vencimiento: <span class="text-red-600">${c.entidad}</span> (${diff} días)</div>`;
                     } else if (diff < 0) {
-                        container.innerHTML += `<div class="p-4 alert-box border-red-800 bg-red-100 rounded-2xl">
-                            <p class="font-black text-[10px] uppercase text-red-800 italic">🚨 ATRASADO: ${c.entidad} venció hace ${Math.abs(diff)} días</p>
-                        </div>`;
+                        container.innerHTML += `<div class="p-4 alert-box border-red-800 bg-red-100 rounded-2xl font-black text-[10px] uppercase text-red-800 italic">🚨 ATRASADO: ${c.entidad} venció hace ${Math.abs(diff)} días</div>`;
                     }
                 }
             });
@@ -189,293 +218,47 @@
 
         function updateBank(i, v) { db.banks[i].bal = parseFloat(v) || 0; save(); actualizarTotales(); }
         function updateGeneric(key, i, field, v) { db[key][i][field] = v; save(); renderAll(); }
+        function updateServiceStatus(label, v) { db.serviceStatus[label] = parseFloat(v) || 0; save(); actualizarTotales(); }
         function toggleCurrency(key, i) { db[key][i].isUSD = !db[key][i].isUSD; save(); renderAll(); }
-        function addSavingMeta() { const n = prompt("Meta:"); if(n) { db.savings.push({ name: n, total: 0, isUSD: false }); save(); renderAll(); } }
-        function addCredit(isFixed) { const ent = prompt("Nombre:"); const mt = parseFloat(prompt("Monto:")); if(ent && mt) { db.credits.push({ entidad: ent, cuota: mt, isFixed, isUSD: false, vencimiento: '' }); save(); renderAll(); } }
+        function addSavingMeta() { const n = prompt("Nombre:"); if(n) { db.savings.push({ name: n, total: 0, isUSD: false }); save(); renderAll(); } }
+        function addCredit(isFixed) { const ent = prompt("Entidad:"); const mt = parseFloat(prompt("Monto:")); if(ent && mt) { db.credits.push({ entidad: ent, cuota: mt, isFixed, isUSD: false, vencimiento: '' }); save(); renderAll(); } }
+        function addEvent() { const n = prompt("Evento:"); const b = parseFloat(prompt("Monto:")); if(n && b) { db.events.push({ name: n, budget: b }); save(); renderAll(); } }
         function deleteItem(k, i) { if(confirm("¿Eliminar?")) { db[k].splice(i, 1); save(); renderAll(); } }
         function save() { localStorage.setItem('finanzas_gold_v1', JSON.stringify(db)); }
 
         function actualizarTotales() {
             const tBancos = db.banks.reduce((acc, b) => acc + b.bal, 0);
-            const tDeudas = db.credits.reduce((acc, c) => acc + (c.isUSD ? (c.cuota * cotizacionDolar) : c.cuota), 0);
-            const tAhorros = db.savings.reduce((acc, s) => acc + (s.isUSD ? (s.total * cotizacionDolar) : s.total), 0);
-            const saldoReal = tBancos - tDeudas - tAhorros;
+            const tServicios = Object.values(db.serviceStatus).reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+            const tDeudas = db.credits.reduce((acc, c) => acc + (c.isUSD ? (parseFloat(c.cuota) * cotizacionDolar) : parseFloat(c.cuota)), 0);
+            const tAhorros = db.savings.reduce((acc, s) => acc + (s.isUSD ? (parseFloat(s.total) * cotizacionDolar) : parseFloat(s.total)), 0);
+            const tEventos = db.events.reduce((acc, e) => acc + (parseFloat(e.budget) || 0), 0);
+
+            const tGastoTotal = tServicios + tDeudas + tEventos;
+            const saldoReal = tBancos - tGastoTotal - tAhorros;
 
             document.getElementById('sum-banks').innerText = `$ ${tBancos.toLocaleString('es-AR')}`;
-            document.getElementById('sum-debts').innerText = `- $ ${tDeudas.toLocaleString('es-AR')}`;
+            document.getElementById('sum-debts').innerText = `- $ ${tGastoTotal.toLocaleString('es-AR')}`;
             document.getElementById('sum-savings').innerText = `- $ ${tAhorros.toLocaleString('es-AR')}`;
             document.getElementById('total-cash').innerText = `$ ${saldoReal.toLocaleString('es-AR')}`;
             
-            updateCharts(saldoReal, tDeudas, tAhorros);
+            updateCharts(saldoReal, tGastoTotal, tAhorros);
         }
 
         let myChart, catChart;
-        function updateCharts(total, deudas, ahorros) {
+        function updateCharts(total, gastos, ahorros) {
             const ctx1 = document.getElementById('projectionChart').getContext('2d');
             if(myChart) myChart.destroy();
             myChart = new Chart(ctx1, { type: 'line', data: { labels: ['M1','M2','M3','M4','M5','M6'], datasets: [{ data: [total, total, total, total, total, total], borderColor: '#FFD700', borderWidth: 5, tension: 0.4, pointRadius: 0 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } } });
 
             const ctx2 = document.getElementById('categoryChart').getContext('2d');
             if(catChart) catChart.destroy();
-            catChart = new Chart(ctx2, { 
-                type: 'doughnut', 
-                data: { 
-                    labels: ['Deudas', 'Ahorros', 'Disponible'], 
-                    datasets: [{ data: [deudas, ahorros, total > 0 ? total : 0], backgroundColor: ['#ef4444', '#22c55e', '#FFD700'], borderWidth: 0 }] 
-                },
-                options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } } }
-            });
+            catChart = new Chart(ctx2, { type: 'doughnut', data: { labels: ['Gastos', 'Ahorros', 'Libre'], datasets: [{ data: [gastos, ahorros, total > 0 ? total : 0], backgroundColor: ['#ef4444', '#22c55e', '#FFD700'], borderWidth: 0 }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } } } });
         }
 
         function showTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function copiarDatos() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Backup Copiado ✅"); }
-        function importarDatos() { const d = prompt("Pega el código aquí:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
+        function copiarDatos() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Copiado ✅"); }
+        function importarDatos() { const d = prompt("Pega el código:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
         
-        window.onload = init;
-    </script>
-</body>
-</html>
-                    <div class="text-left space-y-1 mb-6 px-2 text-[10px] font-black uppercase tracking-tighter">
-                        <div class="flex justify-between text-green-600"><span>Bancos (+):</span> <span id="sum-banks">$ 0</span></div>
-                        <div class="flex justify-between text-red-500"><span>Gastos/Deudas (-):</span> <span id="sum-debts">$ 0</span></div>
-                        <div class="flex justify-between text-blue-600"><span>Ahorros (-):</span> <span id="sum-savings">$ 0</span></div>
-                    </div>
-
-                    <div class="space-y-2">
-                        <button onclick="copiarDatos()" class="w-full btn-yellow py-3 text-[10px] uppercase shadow-md">📤 Copiar Datos</button>
-                        <button onclick="importarDatos()" class="w-full bg-black text-white py-3 text-[10px] rounded-xl font-bold uppercase">📥 Pegar Datos</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-12">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-black text-xl italic uppercase">Eventos Especiales</h3>
-                    <button onclick="addEvent()" class="bg-yellow-400 px-6 py-2 rounded-full font-black text-[10px] uppercase">+ Nuevo Evento</button>
-                </div>
-                <div id="events-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-            </div>
-        </section>
-
-        <section id="servicios" class="tab-content">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border">
-                    <h2 class="font-black mb-6 uppercase text-xs italic text-slate-500 italic">Pendientes Mensuales</h2>
-                    <div id="services-checklist" class="space-y-4"></div>
-                </div>
-                <div class="md:col-span-2 bg-white p-6 rounded-3xl shadow-sm border">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-black uppercase italic italic">Historial y Comprobantes</h2>
-                        <button onclick="triggerServiceUpload()" class="btn-yellow px-4 py-2 text-[10px] uppercase shadow-sm">+ CARGAR FACTURA (PDF/IMG)</button>
-                        <input type="file" id="invoice-input" class="hidden" accept="image/*,application/pdf" onchange="processInvoice(this)">
-                    </div>
-                    <div id="services-history" class="space-y-3"></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="creditos" class="tab-content">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black uppercase italic tracking-tighter text-slate-800">Compromisos Mensuales</h2>
-                <div class="flex gap-2">
-                    <button onclick="addCredit(true)" class="bg-slate-800 text-white px-4 py-3 text-[10px] font-black rounded-xl uppercase shadow-md">+ Gasto Fijo</button>
-                    <button onclick="addCredit(false)" class="btn-yellow px-4 py-3 text-[10px] uppercase shadow-md">+ Deuda Cuotas</button>
-                </div>
-            </div>
-            <div id="credit-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-        </section>
-
-        <section id="ahorros" class="tab-content">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black uppercase italic tracking-tighter text-green-700 italic">Huchas de Ahorro</h2>
-                <button onclick="addSavingMeta()" class="bg-green-600 text-white px-6 py-3 text-[10px] font-black rounded-xl uppercase shadow-md">+ Nueva Meta</button>
-            </div>
-            <div id="savings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-        </section>
-    </main>
-
-    <script>
-        // BASE DE DATOS INICIAL
-        let db = JSON.parse(localStorage.getItem('finanzas_gold_v1')) || {
-            user: "Dario",
-            banks: [{name:"M. PAGO", bal:0}, {name:"ASTROPAY", bal:0}, {name:"BBVA", bal:0}, {name:"SANTANDER", bal:0}, {name:"YPF", bal:0}],
-            services: [], credits: [], events: [], savings: [],
-            serviceStatus: {Luz: 0, Agua: 0, Gas: 0, Internet: 0}
-        };
-
-        function init() {
-            const container = document.getElementById('bank-cards');
-            container.innerHTML = '';
-            db.banks.forEach((b, i) => {
-                container.innerHTML += `
-                    <div class="card-bank shadow-sm border border-slate-100">
-                        <p class="text-[9px] font-black text-slate-400 uppercase mb-2 italic">${b.name}</p>
-                        <div class="flex items-center text-2xl font-black">
-                            <span class="text-slate-300 font-bold mr-1 italic">$</span>
-                            <input type="number" value="${b.bal}" oninput="updateBank(${i}, this.value)" class="w-full focus:outline-none bg-transparent">
-                        </div>
-                    </div>`;
-            });
-            renderAll();
-        }
-
-        function updateBank(i, v) { db.banks[i].bal = parseFloat(v) || 0; save(); actualizarTotales(); }
-
-        // GESTIÓN DE FACTURAS (PDF/IMG)
-        function triggerServiceUpload() { document.getElementById('invoice-input').click(); }
-        function processInvoice(input) {
-            if (input.files && input.files[0]) {
-                const file = input.files[0];
-                const name = prompt("Nombre del pago (Ej: Luz Edesur):");
-                const amount = parseFloat(prompt("Monto pagado:"));
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    db.services.push({ name: name || "Pago", amount: amount || 0, date: new Date().toLocaleDateString(), fileData: e.target.result, fileType: file.type });
-                    save(); renderAll();
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-        function viewFile(fileData, type) {
-            if (type === "application/pdf") {
-                const newWindow = window.open();
-                newWindow.document.write(`<iframe src="${fileData}" frameborder="0" style="width:100%; height:100%;" allowfullscreen></iframe>`);
-            } else {
-                document.getElementById('modal-img').src = fileData;
-                document.getElementById('invoice-modal').classList.add('active');
-            }
-        }
-
-        // RENDERIZADO GENERAL
-        function renderAll() {
-            // Eventos
-            document.getElementById('events-grid').innerHTML = db.events.map((ev, i) => `
-                <div class="event-card">
-                    <div class="flex justify-between items-start"><span class="font-black text-xs uppercase text-yellow-900">${ev.name}</span><button onclick="deleteItem('events', ${i})" class="text-yellow-800">✕</button></div>
-                    <p class="text-3xl font-black mt-2 tracking-tighter">$ ${ev.budget.toLocaleString()}</p>
-                </div>`).join('');
-
-            // Checklist
-            const labels = ['Luz', 'Agua', 'Gas', 'Internet'];
-            document.getElementById('services-checklist').innerHTML = labels.map(label => `
-                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <span class="font-black text-[10px] uppercase text-slate-500 italic">${label}</span>
-                    <input type="number" value="${db.serviceStatus[label] || ''}" oninput="updateServiceStatus('${label}', this.value)" class="w-24 bg-transparent text-right font-black text-yellow-600 focus:outline-none text-lg">
-                </div>`).join('');
-
-            // Historial
-            document.getElementById('services-history').innerHTML = db.services.slice().reverse().map((s, i) => `
-                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div><p class="font-black text-sm uppercase text-slate-700">${s.name}</p><p class="text-[10px] text-slate-400 font-bold">${s.date}</p></div>
-                    <div class="flex items-center gap-4">
-                        <span class="font-black text-xl text-slate-900">$ ${s.amount.toLocaleString()}</span>
-                        ${s.fileData ? `<button onclick="viewFile('${s.fileData}', '${s.fileType}')" class="bg-white p-2 rounded-full shadow-sm text-lg">${s.fileType === 'application/pdf' ? '📄' : '👁️'}</button>` : ''}
-                        <button onclick="deleteItem('services', ${db.services.length - 1 - i})" class="text-slate-300">✕</button>
-                    </div>
-                </div>`).join('');
-
-            // Deudas/Fijos con Edición por Inflación
-            document.getElementById('credit-list').innerHTML = db.credits.map((c, i) => `
-                <div class="p-6 bg-white ${c.isFixed ? 'fixed-debt-border' : 'installment-debt-border'} shadow-sm rounded-3xl flex justify-between items-center border border-slate-100">
-                    <div>
-                        <p class="text-[10px] font-black text-slate-400 uppercase mb-1 italic">${c.isFixed ? 'Gasto Permanente' : c.tipo}</p>
-                        <p class="font-black text-sm uppercase text-slate-800 tracking-tighter">${c.entidad}</p>
-                        ${!c.isFixed ? `<p class="text-[10px] font-bold text-red-400">Restan ${c.restantes} cuotas</p>` : `<p class="text-[10px] font-bold text-slate-400">Mensual</p>`}
-                    </div>
-                    <div class="text-right">
-                        <div class="flex items-center justify-end text-3xl font-black text-slate-900 tracking-tighter">
-                            <span class="mr-1">$</span>
-                            <input type="number" value="${c.cuota}" oninput="updateDebtAmount(${i}, this.value)" class="editable-amount w-32 bg-transparent text-right">
-                        </div>
-                        <button onclick="deleteItem('credits', ${i})" class="text-[9px] font-black text-slate-300 uppercase mt-2">Eliminar</button>
-                    </div>
-                </div>`).join('');
-
-            // Ahorros
-            document.getElementById('savings-grid').innerHTML = (db.savings || []).map((s, i) => `
-                <div class="p-6 bg-white saving-card shadow-sm rounded-3xl flex justify-between items-center border border-slate-100">
-                    <div><p class="text-[10px] font-black text-green-600 uppercase mb-1">Ahorro Guardado</p><p class="font-black text-xl uppercase text-slate-800">${s.name}</p></div>
-                    <div class="text-right">
-                        <div class="flex items-center justify-end text-3xl font-black text-green-700 tracking-tighter">
-                            <span class="mr-1">$</span>
-                            <input type="number" value="${s.total}" oninput="updateSavingAmount(${i}, this.value)" class="editable-amount w-32 bg-transparent text-right">
-                        </div>
-                        <button onclick="deleteItem('savings', i)" class="text-[9px] font-black text-slate-300 uppercase mt-2">Cerrar</button>
-                    </div>
-                </div>`).join('');
-
-            actualizarTotales();
-        }
-
-        // LÓGICA DE CÁLCULO
-        function updateDebtAmount(i, v) { db.credits[i].cuota = parseFloat(v) || 0; save(); actualizarTotales(); }
-        function updateSavingAmount(i, v) { db.savings[i].total = parseFloat(v) || 0; save(); actualizarTotales(); }
-        function updateServiceStatus(label, v) { db.serviceStatus[label] = parseFloat(v) || 0; save(); actualizarTotales(); }
-        
-        function addCredit(isFixed) {
-            const entidad = prompt(isFixed ? "Nombre del gasto (Seguro/Cochera):" : "Entidad:");
-            const cuota = parseFloat(prompt("Monto mensual:"));
-            if(entidad && cuota) {
-                db.credits.push({ tipo: isFixed ? "Gasto Fijo" : "Crédito", entidad, cuota, restantes: isFixed ? 0 : parseInt(prompt("Cuotas:")), isFixed });
-                save(); renderAll();
-            }
-        }
-
-        function addSavingMeta() {
-            const name = prompt("Meta de ahorro:");
-            if(name) { db.savings.push({ name, total: 0 }); save(); renderAll(); }
-        }
-
-        function addEvent() {
-            const name = prompt("Evento:");
-            const budget = parseFloat(prompt("Monto:"));
-            if(name && budget) { db.events.push({ name, budget }); save(); renderAll(); }
-        }
-
-        function deleteItem(key, i) { if(confirm("¿Eliminar?")) { db[key].splice(i, 1); save(); renderAll(); } }
-        function save() { localStorage.setItem('finanzas_gold_v1', JSON.stringify(db)); }
-
-        function actualizarTotales() {
-            const totalBancos = db.banks.reduce((acc, b) => acc + b.bal, 0);
-            const totalServicios = Object.values(db.serviceStatus).reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-            const totalCuotasDeudas = db.credits.reduce((acc, c) => acc + c.cuota, 0);
-            const totalAhorros = (db.savings || []).reduce((acc, s) => acc + s.total, 0);
-            
-            const totalGasto = totalServicios + totalCuotasDeudas;
-            const saldoReal = totalBancos - totalGasto - totalAhorros;
-
-            document.getElementById('sum-banks').innerText = `$ ${totalBancos.toLocaleString()}`;
-            document.getElementById('sum-debts').innerText = `- $ ${totalGasto.toLocaleString()}`;
-            document.getElementById('sum-savings').innerText = `- $ ${totalAhorros.toLocaleString()}`;
-            document.getElementById('total-cash').innerText = `$ ${saldoReal.toLocaleString()}`;
-            document.getElementById('total-cash').className = saldoReal < 0 ? "text-4xl font-black text-red-600" : "text-4xl font-black text-slate-900";
-            document.getElementById('user-display').innerText = db.user.toUpperCase();
-            document.getElementById('username-input').value = db.user;
-            updateChart(saldoReal);
-        }
-
-        function showTab(id) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        function updateUser(v) { db.user = v; save(); document.getElementById('user-display').innerText = v.toUpperCase(); }
-        function copiarDatos() { navigator.clipboard.writeText(JSON.stringify(db)); alert("✅ Código Copiado"); }
-        function importarDatos() { const d = prompt("Pega el código:"); if(d) { try { db = JSON.parse(d); save(); location.reload(); } catch(e) { alert("Error"); } } }
-
-        let myChart;
-        function updateChart(total) {
-            const ctx = document.getElementById('projectionChart').getContext('2d');
-            if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
-                    datasets: [{ data: [total, total, total, total, total, total], borderColor: '#FFD700', borderWidth: 5, tension: 0.4, pointRadius: 0 }]
-                },
-                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false } } }
-            });
-        }
         window.onload = init;
     </script>
 </body>
