@@ -3,39 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Build - Finanzas Dario</title>
+    <title>Finanzas Gold - Dario v10</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .card-gold { background: white; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .btn-yellow { background: #FFD700; color: black; font-weight: 800; border-radius: 12px; }
+        .card-gold { background: white; border-radius: 20px; padding: 20px; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .cuota-tag { background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; }
+        .cuota-badge { background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 800; cursor: pointer; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body class="bg-[#f8fafc] text-slate-900 font-sans">
 
-    <div id="invoice-modal" class="modal" onclick="this.classList.remove('active')">
+    <div id="modal-viewer" class="modal" onclick="this.classList.remove('active')">
         <div class="max-w-4xl w-full p-4 flex flex-col items-center">
-            <img id="modal-img" src="" class="max-w-full max-h-[80vh] rounded-lg hidden">
-            <iframe id="modal-pdf" src="" class="w-full h-[80vh] rounded-lg hidden"></iframe>
+            <img id="view-img" src="" class="max-w-full max-h-[80vh] rounded-lg hidden">
+            <iframe id="view-pdf" src="" class="w-full h-[80vh] rounded-lg hidden"></iframe>
             <button class="mt-4 bg-white px-8 py-2 rounded-full font-black uppercase">Cerrar</button>
         </div>
     </div>
 
-    <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50 shadow-sm">
+    <nav class="bg-white border-b-2 border-yellow-400 p-4 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="font-black text-2xl italic uppercase text-slate-800">FINANZAS <span class="text-yellow-500">DARIO</span></h1>
-            <div id="dolar-info" class="text-[10px] font-black text-slate-400 italic uppercase">Cargando Dólar...</div>
+            <h1 class="font-black text-2xl italic uppercase">FINANZAS <span class="text-yellow-500">DARIO</span></h1>
+            <div id="dolar-display" class="text-[10px] font-black text-slate-400 italic uppercase">Dólar: $...</div>
             <div class="flex gap-4 text-[10px] font-black uppercase">
-                <button onclick="showTab('inicio')">Inicio</button>
-                <button onclick="showTab('servicios')">Servicios</button>
-                <button onclick="showTab('deudas')">Deudas</button>
-                <button onclick="showTab('ahorros')">Ahorros</button>
+                <button onclick="tab('inicio')">Inicio</button>
+                <button onclick="tab('servicios')">Servicios</button>
+                <button onclick="tab('deudas')">Deudas</button>
+                <button onclick="tab('ahorros')">Ahorros</button>
             </div>
         </div>
     </nav>
@@ -43,156 +41,158 @@
     <main class="max-w-6xl mx-auto p-4 md:p-6">
         
         <section id="inicio" class="tab-content active">
-            <div id="bank-grid" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"></div>
+            <div id="bancos-container" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"></div>
             
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="card-gold lg:col-span-2 flex items-center justify-center"><canvas id="chartPrincipal"></canvas></div>
-                <div class="card-gold border-2 border-yellow-400 text-center">
-                    <p class="text-[10px] font-black text-slate-400 uppercase italic mb-2">Saldo Real Disponible</p>
-                    <p id="total-cash" class="text-5xl font-black tracking-tighter mb-8">$ 0</p>
-                    <div class="flex gap-2">
-                        <button onclick="backup()" class="flex-1 btn-yellow py-3 text-[10px] uppercase">Backup</button>
-                        <button onclick="restaurar()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-bold uppercase">Pegar</button>
-                    </div>
+            <div class="max-w-md mx-auto card-gold border-2 border-yellow-400 text-center">
+                <p class="text-[10px] font-black text-slate-400 uppercase italic mb-1">Saldo Real (Bancos - Gastos - Ahorros)</p>
+                <p id="saldo-real" class="text-5xl font-black tracking-tighter mb-6">$ 0</p>
+                <div class="flex gap-2">
+                    <button onclick="exportar()" class="flex-1 bg-yellow-400 py-3 rounded-xl text-[10px] font-black uppercase">Backup</button>
+                    <button onclick="importar()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-black uppercase">Pegar</button>
                 </div>
             </div>
         </section>
 
         <section id="servicios" class="tab-content">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10" id="serv-grid"></div>
+            <h2 class="text-xl font-black uppercase italic mb-6">Control de Servicios</h2>
+            <div id="servicios-inputs" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10"></div>
+            
             <div class="card-gold">
-                <h3 class="font-black uppercase italic text-sm mb-4">Historial de Comprobantes</h3>
-                <div id="invoice-history" class="space-y-3"></div>
+                <h3 class="font-black uppercase text-sm mb-4 border-b pb-2">Facturas Guardadas</h3>
+                <div id="historial-facturas" class="space-y-3"></div>
             </div>
         </section>
 
         <section id="deudas" class="tab-content">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black italic uppercase italic">Compromisos y Cuotas</h2>
-                <button onclick="nuevaDeuda()" class="btn-yellow px-6 py-2 text-[10px]">+ Nueva Deuda</button>
+                <h2 class="text-xl font-black uppercase italic">Deudas y Compromisos</h2>
+                <button onclick="nuevaDeuda()" class="bg-yellow-400 px-6 py-2 rounded-xl text-[10px] font-black uppercase">+ Añadir</button>
             </div>
-            <div id="credit-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="lista-deudas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
 
         <section id="ahorros" class="tab-content">
-            <h2 class="text-2xl font-black italic uppercase text-green-700 mb-6 italic">Sistema de Ahorros</h2>
-            <div id="savings-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black uppercase italic text-green-700">Sistema de Ahorros</h2>
+                <button onclick="nuevoAhorro()" class="bg-green-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">+ Meta</button>
+            </div>
+            <div id="lista-ahorros" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
         </section>
-
     </main>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('finanzas_dario_master')) || {
+        // PERSISTENCIA
+        let db = JSON.parse(localStorage.getItem('dario_v10_db')) || {
             bancos: [{n:"M. PAGO", v:0}, {n:"ASTROPAY", v:0}, {n:"BBVA", v:0}, {n:"SANTANDER", v:0}, {n:"EFECTIVO", v:0}],
-            servicios: {Luz:0, Agua:0, Gas:0, Internet:0},
+            servicios_monto: {Luz:0, Agua:0, Gas:0, Internet:0},
             deudas: [],
             ahorros: [],
-            comprobantes: []
+            facturas: []
         };
 
-        let cotizDolar = 1250;
+        let valorDolar = 1250;
 
-        async function getDolar() {
+        async function d_api() {
             try {
-                const res = await fetch('https://argentinadatos.com/api/v1/cotizaciones/dolares');
-                const data = await res.json();
-                cotizDolar = data.find(d => d.casa === "blue")?.venta || 1250;
-                document.getElementById('dolar-info').innerText = `Dólar Blue: $${cotizDolar}`;
-            } catch(e) { console.log("Error API"); }
-            finally { render(); }
+                const r = await fetch('https://argentinadatos.com/api/v1/cotizaciones/dolares');
+                const d = await r.json();
+                valorDolar = d.find(x => x.casa === "blue")?.venta || 1250;
+                document.getElementById('dolar-display').innerText = `Dólar Blue: $${valorDolar}`;
+            } catch(e) {}
+            render();
         }
 
         function render() {
             // BANCOS
-            document.getElementById('bank-grid').innerHTML = db.bancos.map((b, i) => `
-                <div class="card-gold text-center">
-                    <p class="text-[9px] font-black text-slate-400 uppercase italic mb-1">${b.n}</p>
-                    <div class="flex text-2xl font-black justify-center">$<input type="number" value="${b.v}" oninput="uBank(${i}, this.value)" class="w-full bg-transparent text-right focus:outline-none"></div>
+            document.getElementById('bancos-container').innerHTML = db.bancos.map((b, i) => `
+                <div class="card-gold">
+                    <p class="text-[9px] font-black text-slate-400 mb-1">${b.n}</p>
+                    <div class="flex font-black text-xl">$<input type="number" value="${b.v}" oninput="u_bnk(${i},this.value)" class="w-full bg-transparent text-right outline-none"></div>
                 </div>`).join('');
 
             // SERVICIOS
-            const sNames = ['Luz', 'Agua', 'Gas', 'Internet'];
-            document.getElementById('serv-grid').innerHTML = sNames.map(n => `
-                <div class="card-gold flex justify-between items-center shadow-sm">
+            const sn = ['Luz', 'Agua', 'Gas', 'Internet'];
+            document.getElementById('servicios-inputs').innerHTML = sn.map(n => `
+                <div class="card-gold flex justify-between items-center">
                     <div>
                         <p class="text-[10px] font-black text-slate-400 uppercase italic">${n}</p>
-                        <input type="number" value="${db.servicios[n] || ''}" oninput="uServ('${n}', this.value)" class="text-3xl font-black text-yellow-500 bg-transparent focus:outline-none w-32" placeholder="0">
+                        <input type="number" value="${db.servicios_monto[n]}" oninput="u_srv('${n}',this.value)" class="text-2xl font-black text-yellow-500 bg-transparent outline-none w-28">
                     </div>
-                    <button onclick="upComprobante('${n}')" class="bg-slate-100 p-4 rounded-full hover:bg-yellow-400 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-width="2"/></svg>
+                    <button onclick="u_file('${n}')" class="bg-slate-100 p-3 rounded-full hover:bg-yellow-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-width="2"/></svg>
                     </button>
                 </div>`).join('');
 
-            // HISTORIAL CON "OJO"
-            document.getElementById('invoice-history').innerHTML = db.comprobantes.slice().reverse().map((c, i) => `
-                <div class="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100">
+            // HISTORIAL CON EL "OJO"
+            document.getElementById('historial-facturas').innerHTML = db.facturas.slice().reverse().map((f, i) => `
+                <div class="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                    <span class="font-black text-xs uppercase">${f.n} - ${f.d}</span>
                     <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 bg-black text-yellow-400 rounded-full flex items-center justify-center font-black text-xs">${c.n[0]}</div>
-                        <div><p class="font-black text-sm uppercase">${c.n}</p><p class="text-[9px] font-bold text-slate-400">${c.d}</p></div>
-                    </div>
-                    <div class="flex items-center gap-6">
-                        <span class="font-black text-lg">$ ${c.a.toLocaleString()}</span>
-                        <button onclick="viewFile('${c.f}')" class="text-blue-500">
+                        <span class="font-black text-sm">$ ${f.a.toLocaleString()}</span>
+                        <button onclick="ver_f('${f.f}')" class="text-blue-500">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7" stroke-width="2"/></svg>
                         </button>
-                        <button onclick="delComp(${db.comprobantes.length - 1 - i})" class="text-slate-300">✕</button>
+                        <button onclick="del_f(${db.facturas.length-1-i})" class="text-slate-200">✕</button>
                     </div>
                 </div>`).join('');
 
-            // DEUDAS CON CUOTAS VISIBLES
-            document.getElementById('credit-list').innerHTML = db.deudas.map((d, i) => `
-                <div class="card-gold border-l-8 ${d.q ? 'border-red-500' : 'border-slate-800'} flex justify-between items-center">
-                    <div class="flex-1">
+            // DEUDAS CON CUOTAS
+            document.getElementById('lista-deudas').innerHTML = db.deudas.map((d, i) => `
+                <div class="card-gold border-l-4 ${d.q ? 'border-red-500' : 'border-slate-800'} flex justify-between items-center">
+                    <div>
                         <div class="flex items-center gap-2">
-                            <p class="text-[10px] font-black text-slate-400 uppercase italic">${d.n}</p>
-                            ${d.q ? `<span class="cuota-tag" onclick="editCuotas(${i})">Restan ${d.q} cuotas</span>` : ''}
+                            <p class="font-black text-[10px] text-slate-400 uppercase">${d.n}</p>
+                            ${d.q ? `<span class="cuota-badge" onclick="u_q(${i})">Restan ${d.q}</span>` : ''}
                         </div>
-                        <input type="date" value="${d.vto || ''}" onchange="uDeuda(${i}, 'vto', this.value)" class="text-[10px] font-bold bg-slate-50 p-1 rounded mt-1">
+                        <input type="date" value="${d.vto || ''}" onchange="u_dd(${i},'vto',this.value)" class="text-[9px] font-bold bg-slate-50 p-1 rounded">
                     </div>
                     <div class="text-right">
-                        <div class="text-3xl font-black">${d.usd ? 'u$s' : '$'} <input type="number" value="${d.v}" oninput="uDeuda(${i}, 'v', this.value)" class="w-24 text-right bg-transparent focus:outline-none"></div>
-                        <div class="flex gap-4 justify-end mt-1 text-[9px] font-black uppercase italic">
-                            <button onclick="toggleUSD(${i})" class="text-blue-500">USD/ARS</button>
-                            <button onclick="delDeuda(${i})" class="text-slate-300">Borrar</button>
+                        <div class="text-2xl font-black">${d.usd ? 'u$s' : '$'} <input type="number" value="${d.v}" oninput="u_dd(${i},'v',this.value)" class="w-20 text-right bg-transparent outline-none"></div>
+                        <div class="flex gap-2 justify-end text-[8px] font-black uppercase mt-1">
+                            <button onclick="t_usd(${i})" class="text-blue-500 italic">USD/ARS</button>
+                            <button onclick="del_d(${i})" class="text-slate-300">Borrar</button>
                         </div>
                     </div>
                 </div>`).join('');
 
             // AHORROS
-            document.getElementById('savings-grid').innerHTML = db.ahorros.map((s, i) => `
-                <div class="card-gold border-l-8 border-green-500 flex justify-between items-center">
-                    <span class="font-black text-xl uppercase italic">${s.n}</span>
-                    <div class="text-3xl font-black text-green-700">$ <input type="number" value="${s.v}" oninput="uAhorro(${i}, this.value)" class="w-24 text-right bg-transparent focus:outline-none"></div>
+            document.getElementById('lista-ahorros').innerHTML = db.ahorros.map((s, i) => `
+                <div class="card-gold border-l-4 border-green-500 flex justify-between items-center">
+                    <span class="font-black text-sm uppercase italic">${s.n}</span>
+                    <div class="text-2xl font-black text-green-700">$ <input type="number" value="${s.v}" oninput="u_ah(${i},this.value)" class="w-24 text-right bg-transparent outline-none"></div>
                 </div>`).join('');
 
-            updateSaldo();
+            calc();
         }
 
-        // FUNCIONES MOTOR
-        function uBank(i, v) { db.bancos[i].v = parseFloat(v) || 0; save(); updateSaldo(); }
-        function uServ(n, v) { db.servicios[n] = parseFloat(v) || 0; save(); updateSaldo(); }
-        function uDeuda(i, f, v) { db.deudas[i][f] = (f === 'v') ? parseFloat(v) : v; save(); updateSaldo(); }
-        function uAhorro(i, v) { db.ahorros[i].v = parseFloat(v) || 0; save(); updateSaldo(); }
-        function toggleUSD(i) { db.deudas[i].usd = !db.deudas[i].usd; save(); render(); }
-        function editCuotas(i) { const n = prompt("Cuotas restantes:"); if(n) { db.deudas[i].q = n; save(); render(); } }
+        // LÓGICA DE ACTUALIZACIÓN
+        function u_bnk(i,v) { db.bancos[i].v = parseFloat(v) || 0; save(); calc(); }
+        function u_srv(n,v) { db.servicios_monto[n] = parseFloat(v) || 0; save(); calc(); }
+        function u_dd(i,f,v) { db.deudas[i][f] = (f==='v') ? parseFloat(v) : v; save(); calc(); }
+        function u_ah(i,v) { db.ahorros[i].v = parseFloat(v) || 0; save(); calc(); }
+        function u_q(i) { const n = prompt("Cuotas faltantes:"); if(n) { db.deudas[i].q = n; save(); render(); } }
+        function t_usd(i) { db.deudas[i].usd = !db.deudas[i].usd; save(); render(); }
 
         function nuevaDeuda() {
             const n = prompt("Nombre:"); if(!n) return;
-            const q = prompt("¿Cuántas cuotas faltan? (Vacío si es fijo):");
-            db.deudas.push({n, v:0, q: q || null, usd: false, vto: ''});
-            save(); render();
+            const q = prompt("Cuotas (vacío si no tiene):");
+            db.deudas.push({n, v:0, q: q||null, usd:false, vto:''}); save(); render();
         }
 
-        function upComprobante(name) {
+        function nuevoAhorro() {
+            const n = prompt("Nombre de la meta:");
+            if(n) { db.ahorros.push({n, v:0}); save(); render(); }
+        }
+
+        function u_file(name) {
             const input = document.createElement('input');
             input.type = 'file'; input.accept = 'image/*,application/pdf';
             input.onchange = e => {
                 const f = e.target.files[0];
-                const amt = prompt("Monto pagado:");
-                if(!amt) return;
+                const a = prompt("Monto:"); if(!a) return;
                 const r = new FileReader();
                 r.onload = ev => {
-                    db.comprobantes.push({n: name, a: parseFloat(amt), d: new Date().toLocaleDateString(), f: ev.target.result});
+                    db.facturas.push({n:name, a:parseFloat(a), d:new Date().toLocaleDateString(), f:ev.target.result});
                     save(); render();
                 };
                 r.readAsDataURL(f);
@@ -200,33 +200,33 @@
             input.click();
         }
 
-        function viewFile(f) {
-            const m = document.getElementById('invoice-modal');
-            const img = document.getElementById('modal-img');
-            const pdf = document.getElementById('modal-pdf');
+        function ver_f(f) {
+            const m = document.getElementById('modal-viewer');
+            const img = document.getElementById('view-img');
+            const pdf = document.getElementById('view-pdf');
             img.classList.add('hidden'); pdf.classList.add('hidden');
             if(f.includes('pdf')) { pdf.src = f; pdf.classList.remove('hidden'); }
             else { img.src = f; img.classList.remove('hidden'); }
             m.classList.add('active');
         }
 
-        function updateSaldo() {
-            const tB = db.bancos.reduce((a, b) => a + (b.v || 0), 0);
-            const tS = Object.values(db.servicios).reduce((a, v) => a + (v || 0), 0);
-            const tD = db.deudas.reduce((a, d) => a + (d.usd ? (d.v * cotizDolar) : (d.v || 0)), 0);
-            const tA = db.ahorros.reduce((a, s) => a + (s.v || 0), 0);
+        function calc() {
+            const tB = db.bancos.reduce((a,b)=>a+(b.v||0),0);
+            const tS = Object.values(db.servicios_monto).reduce((a,v)=>a+(v||0),0);
+            const tD = db.deudas.reduce((a,d)=>a+(d.usd?(d.v*valorDolar):(d.v||0)),0);
+            const tA = db.ahorros.reduce((a,s)=>a+(s.v||0),0);
             const total = tB - tS - tD - tA;
-            document.getElementById('total-cash').innerText = `$ ${total.toLocaleString('es-AR')}`;
+            document.getElementById('saldo-real').innerText = `$ ${total.toLocaleString('es-AR')}`;
         }
 
-        function save() { localStorage.setItem('finanzas_dario_master', JSON.stringify(db)); }
-        function delComp(i) { if(confirm("¿Borrar?")) { db.comprobantes.splice(i,1); save(); render(); } }
-        function delDeuda(i) { if(confirm("¿Borrar?")) { db.deudas.splice(i,1); save(); render(); } }
-        function showTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function backup() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Backup Copiado ✅"); }
-        function restaurar() { const d = prompt("Pega el backup:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
+        function save() { localStorage.setItem('dario_v10_db', JSON.stringify(db)); }
+        function tab(id) { document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function exportar() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Copiado ✅"); }
+        function importar() { const d=prompt("Backup:"); if(d){ db=JSON.parse(d); save(); location.reload(); } }
+        function del_f(i) { db.facturas.splice(i,1); save(); render(); }
+        function del_d(i) { if(confirm("¿Borrar?")){ db.deudas.splice(i,1); save(); render(); } }
 
-        window.onload = getDolar;
+        window.onload = d_api;
     </script>
 </body>
 </html>
