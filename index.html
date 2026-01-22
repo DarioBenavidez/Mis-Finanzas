@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Darío - Master Build GOLD</title>
+    <title>Finanzas Darío - Master Build GOLD v14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-content { display: none; }
@@ -15,6 +15,8 @@
         .modal.active { display: flex; }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
         .cuota-tag { color: #ef4444; font-size: 11px; font-weight: 800; margin-top: 4px; display: block; cursor: pointer; }
+        .dolar-input { background: transparent; border: none; font-weight: 900; color: #64748b; width: 60px; outline: none; text-align: center; border-bottom: 2px dashed #cbd5e1; }
+        .dolar-input:focus { color: #eab308; border-bottom-color: #eab308; }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans">
@@ -30,21 +32,24 @@
     <nav class="bg-white border-b-2 border-yellow-400 p-6 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <h1 class="font-black text-2xl italic uppercase tracking-tighter">FINANZAS <span class="text-yellow-500">DARIO</span></h1>
-            <div id="dolar-info" class="text-[11px] font-black text-slate-400 italic uppercase">Dólar: Cargando...</div>
+            
+            <div class="text-[11px] font-black text-slate-500 italic uppercase bg-slate-100 px-4 py-2 rounded-full flex items-center gap-2">
+                <span>Dólar Blue: $</span>
+                <input type="number" id="manual-usd" oninput="uUsd(this.value)" class="dolar-input" placeholder="...">
+            </div>
+
             <div class="flex gap-6 text-[11px] font-black uppercase tracking-widest">
-                <button onclick="showTab('inicio')">Inicio</button>
-                <button onclick="showTab('servicios')">Servicios</button>
-                <button onclick="showTab('deudas')">Deudas</button>
+                <button onclick="showTab('inicio')" class="hover:text-yellow-500">Inicio</button>
+                <button onclick="showTab('servicios')" class="hover:text-yellow-500">Servicios</button>
+                <button onclick="showTab('deudas')" class="hover:text-yellow-500">Deudas</button>
                 <button onclick="showTab('ahorros')" class="text-green-600">Ahorros</button>
             </div>
         </div>
     </nav>
 
     <main class="max-w-7xl mx-auto p-6">
-        
         <section id="inicio" class="tab-content active">
             <div id="bancos-grid" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10"></div>
-            
             <div class="max-w-2xl mx-auto card-gold border-2 border-yellow-400 text-center">
                 <p class="text-[11px] font-black text-slate-400 uppercase italic mb-2">Saldo Real (Bancos + Ahorros - Deudas)</p>
                 <p id="saldo-total" class="text-7xl font-black tracking-tighter mb-8">$ 0</p>
@@ -58,19 +63,15 @@
         <section id="servicios" class="tab-content">
             <h2 class="text-3xl font-black italic uppercase mb-8">Servicios y Facturas</h2>
             <div id="servicios-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10"></div>
-            
             <div class="card-gold">
-                <h3 class="font-black uppercase text-sm mb-4 border-b pb-2 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-width="2"/></svg>
-                    Historial de Comprobantes (Ojo para ver)
-                </h3>
+                <h3 class="font-black uppercase text-sm mb-4 border-b pb-2 flex items-center gap-2">Historial de Comprobantes</h3>
                 <div id="historial-grid" class="space-y-3"></div>
             </div>
         </section>
 
         <section id="deudas" class="tab-content">
             <div class="flex justify-between items-end mb-8">
-                <h2 class="text-3xl font-black italic uppercase">Deudas y Compromisos</h2>
+                <h2 class="text-3xl font-black italic uppercase">Compromisos de Pago</h2>
                 <div class="flex gap-2">
                     <button onclick="nuevaDeuda(false)" class="bg-slate-800 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase">+ Gasto Fijo</button>
                     <button onclick="nuevaDeuda(true)" class="btn-yellow px-6 py-3 text-[10px] uppercase shadow-md">+ Deuda en Cuotas</button>
@@ -103,21 +104,32 @@
             try {
                 const r = await fetch('https://argentinadatos.com/api/v1/cotizaciones/dolares');
                 const d = await r.json();
-                usdPrice = d.find(x => x.casa === "blue")?.venta || 1250;
-                document.getElementById('dolar-info').innerText = `Dólar Blue: $${usdPrice} (Auto)`;
-            } catch(e) { console.error("Error Dolar"); }
-            render();
+                const blue = d.find(x => x.casa === "blue");
+                if (blue) {
+                    usdPrice = blue.venta;
+                    document.getElementById('manual-usd').value = usdPrice;
+                    calc();
+                }
+            } catch(e) { 
+                document.getElementById('manual-usd').value = usdPrice;
+            }
+        }
+
+        // Función para cambio manual de dólar
+        function uUsd(val) {
+            if (val && val > 0) {
+                usdPrice = parseFloat(val);
+                calc();
+            }
         }
 
         function render() {
-            // BANCOS
             document.getElementById('bancos-grid').innerHTML = db.bancos.map((b, i) => `
                 <div class="card-gold">
                     <p class="text-[10px] font-black text-slate-400 mb-2 uppercase italic">${b.n}</p>
-                    <div class="flex items-center text-2xl font-black">$ <input type="number" value="${b.v}" oninput="uBnk(${i},this.value)" class="w-full bg-transparent outline-none text-right font-black focus:text-yellow-500"></div>
+                    <div class="flex items-center text-2xl font-black">$ <input type="number" value="${b.v}" oninput="uBnk(${i},this.value)" class="w-full bg-transparent outline-none text-right font-black"></div>
                 </div>`).join('');
 
-            // SERVICIOS
             document.getElementById('servicios-grid').innerHTML = Object.keys(db.servicios_monto).map(s => `
                 <div class="card-gold flex justify-between items-center">
                     <p class="font-black text-xs italic uppercase text-slate-400">${s}</p>
@@ -129,9 +141,8 @@
                     </div>
                 </div>`).join('');
 
-            // HISTORIAL CON EL OJO
             document.getElementById('historial-grid').innerHTML = db.comprobantes.slice().reverse().map((c, i) => `
-                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
+                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm mb-2">
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 bg-black text-yellow-400 rounded-full flex items-center justify-center font-black text-xs">${c.n[0]}</div>
                         <div><p class="font-black text-sm uppercase">${c.n}</p><p class="text-[9px] font-bold text-slate-400">${c.d}</p></div>
@@ -145,31 +156,28 @@
                     </div>
                 </div>`).join('');
 
-            // DEUDAS
             document.getElementById('deudas-grid').innerHTML = db.deudas.map((d, i) => `
-                <div class="card-gold flex justify-between items-center border-l-8 ${d.q ? 'border-red-500' : 'border-slate-800'}">
+                <div class="card-gold flex justify-between items-center border-l-8 ${d.q ? 'border-red-500' : 'border-slate-800'} mb-4">
                     <div class="flex-1">
                         <p class="text-[10px] font-black text-slate-400 uppercase italic">${d.q ? 'Cuotas' : 'Fijo'}</p>
                         <p class="font-black text-xl uppercase tracking-tighter text-slate-700">${d.n}</p>
                         ${d.q ? `<span class="cuota-tag" onclick="uQ(${i})">Restan ${d.q} cuotas</span>` : ''}
-                        <input type="date" value="${d.vto || ''}" onchange="uDd(${i},'vto',this.value)" class="text-[10px] font-bold bg-slate-50 p-1 rounded mt-2 outline-none">
                     </div>
                     <div class="text-right">
                         <div class="text-4xl font-black">${d.usd ? 'u$s' : '$'} <input type="number" value="${d.v}" oninput="uDd(${i},'v',this.value)" class="w-28 bg-transparent outline-none text-right font-black"></div>
                         <div class="flex gap-4 justify-end mt-2">
-                            <button onclick="tUsd(${i})" class="text-[9px] font-black text-blue-500 uppercase italic">USD/ARS</button>
+                            <button onclick="tUsd(${i})" class="text-[9px] font-black ${d.usd ? 'text-blue-600' : 'text-slate-400'} uppercase italic">USD/ARS</button>
                             <button onclick="delDd(${i})" class="text-[9px] font-black text-slate-300 uppercase">Borrar</button>
                         </div>
                     </div>
                 </div>`).join('');
 
-            // AHORROS
             document.getElementById('ahorros-grid').innerHTML = db.ahorros.map((a, i) => `
-                <div class="card-gold border-l-8 border-green-500 flex justify-between items-center shadow-sm">
+                <div class="card-gold border-l-8 border-green-500 flex justify-between items-center mb-4">
                     <p class="font-black text-xl uppercase italic text-slate-700">${a.n}</p>
                     <div class="text-right">
                         <div class="text-4xl font-black text-green-600">$ <input type="number" value="${a.v}" oninput="uAh(${i},this.value)" class="w-32 bg-transparent outline-none text-right font-black"></div>
-                        <button onclick="delAh(${i})" class="text-[10px] font-black text-slate-200 uppercase mt-1">Eliminar</button>
+                        <button onclick="delAh(${i})" class="text-[10px] font-black text-slate-200 uppercase">Eliminar</button>
                     </div>
                 </div>`).join('');
 
@@ -180,7 +188,7 @@
             const bnk = db.bancos.reduce((a, b) => a + (parseFloat(b.v) || 0), 0);
             const ah = db.ahorros.reduce((a, b) => a + (parseFloat(b.v) || 0), 0);
             const srv = Object.values(db.servicios_monto).reduce((a, b) => a + (parseFloat(b) || 0), 0);
-            const dd = db.deudas.reduce((a, b) => a + (b.usd ? (b.v * usdPrice) : (parseFloat(b.v) || 0)), 0);
+            const dd = db.deudas.reduce((a, b) => a + (b.usd ? (parseFloat(b.v) * usdPrice) : (parseFloat(b.v) || 0)), 0);
             
             const total = (bnk + ah) - (srv + dd);
             const el = document.getElementById('saldo-total');
@@ -188,13 +196,17 @@
             el.className = total >= 0 ? 'text-7xl font-black tracking-tighter mb-8 text-slate-800' : 'text-7xl font-black tracking-tighter mb-8 text-red-600';
         }
 
-        // FUNCIONES DE CARGA Y GESTIÓN
+        // FUNCIONES CORE
         function uBnk(i,v) { db.bancos[i].v = v; save(); calc(); }
         function uSrv(s,v) { db.servicios_monto[s] = v; save(); calc(); }
-        function uDd(i,f,v) { db.deudas[i][f] = (f==='v') ? v : v; save(); calc(); }
+        function uDd(i,f,v) { db.deudas[i][f] = v; save(); calc(); }
         function uAh(i,v) { db.ahorros[i].v = v; save(); calc(); }
         function uQ(i) { const q = prompt("Cuotas faltantes:"); if(q) { db.deudas[i].q = q; save(); render(); } }
         function tUsd(i) { db.deudas[i].usd = !db.deudas[i].usd; save(); render(); }
+        function save() { localStorage.setItem('dario_master_final', JSON.stringify(db)); }
+        function showTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function exportar() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Backup copiado! ✅"); }
+        function importar() { const d = prompt("Pegar backup:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
 
         function upFile(name) {
             const input = document.createElement('input');
@@ -234,13 +246,11 @@
         function delComp(i) { if(confirm("¿Borrar?")) { db.comprobantes.splice(i,1); save(); render(); } }
         function delDd(i) { if(confirm("¿Borrar?")) { db.deudas.splice(i,1); save(); render(); } }
         function delAh(i) { if(confirm("¿Borrar?")) { db.ahorros.splice(i,1); save(); render(); } }
-        
-        function save() { localStorage.setItem('dario_master_final', JSON.stringify(db)); }
-        function showTab(id) { document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function exportar() { navigator.clipboard.writeText(JSON.stringify(db)); alert("Backup copiado! ✅"); }
-        function importar() { const d = prompt("Pegar backup:"); if(d) { db = JSON.parse(d); save(); location.reload(); } }
 
-        window.onload = fetchDolar;
+        window.onload = () => {
+            render();
+            fetchDolar();
+        };
     </script>
 </body>
 </html>
