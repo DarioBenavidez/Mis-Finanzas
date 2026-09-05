@@ -1877,9 +1877,10 @@ function FinanzasApp() {
           </button>
           {/* Perfil salió del bottom-nav: se llega desde el avatar de la barra de arriba. */}
         </div>
-        <button className="mobile-fab" data-tour="add-btn" onClick={() => setPanel("transacciones")} style={{ position: "fixed", right: 20, bottom: "calc(28px + env(safe-area-inset-bottom))", width: 56, height: 56, borderRadius: "50%", background: COLORS.accent, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 16px ${COLORS.accent}60`, zIndex: 70 }}>
-          <span style={{ color: "#fff", fontSize: 26, fontWeight: 700, lineHeight: 1 }}>+</span>
-        </button>
+        <MobileFabMenu
+          tourActive={tourPhase === "income" || tourPhase === "expense"}
+          onPick={(tipo) => { setNuevaTxTipo(tipo === "ingreso" ? "ingreso" : "gasto"); setPanel("transacciones"); }}
+        />
       </div>
 
       {/* ── PANELES a pantalla completa: SOLO mobile. En escritorio la sección
@@ -2191,6 +2192,40 @@ function NuevaCargaMenu({ onPick }) {
         </React.Fragment>
       )}
     </div>
+  );
+}
+
+// FAB "+" de mobile con el mismo menú Gasto / Ingreso que "Nueva carga" en
+// escritorio. Durante el tour de onboarding va directo al sheet (el tipo lo
+// decide el tourPhase), sin menú.
+function MobileFabMenu({ onPick, tourActive }) {
+  const [open, setOpen] = useState(false);
+  const pick = (tipo) => { setOpen(false); onPick(tipo); };
+  return (
+    <React.Fragment>
+      {open && <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 65 }} />}
+      {open && (
+        <div style={{ position: "fixed", right: 20, bottom: "calc(96px + env(safe-area-inset-bottom))", zIndex: 71, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+          {[["gasto", "Gasto", COLORS.red, "−"], ["ingreso", "Ingreso", COLORS.green, "+"]].map(([tipo, label, color, sign]) => (
+            <button key={tipo} onClick={() => pick(tipo)} style={{
+              display: "flex", alignItems: "center", gap: 10, background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+              borderRadius: 999, padding: "10px 16px 10px 12px", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14,
+              color: COLORS.text, cursor: "pointer", boxShadow: "0 8px 24px #00000026", whiteSpace: "nowrap",
+            }}>
+              <span style={{ width: 24, height: 24, borderRadius: 8, background: color + "22", color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 14, lineHeight: 1 }}>{sign}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        className="mobile-fab" data-tour="add-btn"
+        onClick={() => { if (tourActive) onPick("gasto"); else setOpen(o => !o); }}
+        aria-label="Nueva carga"
+        style={{ position: "fixed", right: 20, bottom: "calc(28px + env(safe-area-inset-bottom))", width: 56, height: 56, borderRadius: "50%", background: COLORS.accent, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 16px ${COLORS.accent}60`, zIndex: 70 }}>
+        <span style={{ color: "#fff", fontSize: 26, fontWeight: 700, lineHeight: 1, transform: open ? "rotate(45deg)" : "none", transition: "transform .18s var(--ease-standard)", display: "block" }}>+</span>
+      </button>
+    </React.Fragment>
   );
 }
 
