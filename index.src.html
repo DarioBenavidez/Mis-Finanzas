@@ -125,6 +125,11 @@
     .app-shell { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
     .app-main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .topbar-inner { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; }
+    /* Mobile: marca más chica y nombre/email acotados para que quepa el bloque de usuario. */
+    @media (max-width: 1023px) {
+      .topbar-brand img { width: 92px !important; }
+      .topbar-user-txt span { max-width: 124px !important; }
+    }
     .content-area { flex: 1; width: 100%; overflow-y: auto; max-width: 720px; margin: 0 auto; padding: 20px 16px 110px; box-sizing: border-box; }
     .inicio-layout { display: flex; flex-direction: column; gap: 16px; }
     .inicio-primary { display: flex; flex-direction: column; gap: 16px; }
@@ -194,7 +199,7 @@
       .topbar-user { transition: background .15s; }
       .topbar-user:hover { background: rgba(255,255,255,0.1); }
       /* En pantallas medianas el nombre/email se ocultan y queda solo la foto. */
-      @media (max-width: 1200px) { .topbar-user-txt { display: none !important; } }
+      @media (min-width: 1024px) and (max-width: 1200px) { .topbar-user-txt { display: none !important; } }
       /* Análisis / WhatsApp en la barra de arriba (reemplazan al grupo "Cuenta"
          del rail izquierdo). */
       .topbar-nav { display: flex; gap: 4px; margin-left: 20px; }
@@ -1799,30 +1804,25 @@ function FinanzasApp() {
                 </button>
               </div>
             )}
-            {!bocetoOn && (
-              <DatePillPicker selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
-            )}
-            {bocetoOn && (
-              <button
-                className="topbar-user"
-                onClick={() => { setMainTab("perfil"); setPanel(null); }}
-                aria-label="Ir a Perfil"
-                title={displayName}
-                style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "3px 4px 3px 6px", borderRadius: 999, marginLeft: 2 }}
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #ffffff40", flexShrink: 0 }} />
-                ) : (
-                  <span style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffffff26", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
-                    {(displayName || "?").charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <span className="topbar-user-txt" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.25, minWidth: 0 }}>
-                  <span style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{displayName}</span>
-                  {user?.email && <span style={{ fontSize: 10.5, color: "#ffffff99", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{user.email}</span>}
+            <button
+              className="topbar-user"
+              onClick={() => { setMainTab("perfil"); setPanel(null); }}
+              aria-label="Ir a Perfil"
+              title={displayName}
+              style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "3px 4px 3px 6px", borderRadius: 999, marginLeft: 2 }}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #ffffff40", flexShrink: 0 }} />
+              ) : (
+                <span style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffffff26", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                  {(displayName || "?").charAt(0).toUpperCase()}
                 </span>
-              </button>
-            )}
+              )}
+              <span className="topbar-user-txt" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.25, minWidth: 0 }}>
+                <span style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{displayName}</span>
+                {user?.email && <span style={{ fontSize: 10.5, color: "#ffffff99", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{user.email}</span>}
+              </span>
+            </button>
           </div>
          </div>
         </div>
@@ -1875,10 +1875,7 @@ function FinanzasApp() {
             <div style={{ display: "flex", filter: waPhone ? "none" : "grayscale(1) opacity(0.4)" }}><WhatsAppIcon size={20} /></div>
             <div style={{ fontSize: 9, color: waPhone ? COLORS.green : COLORS.textDim, fontWeight: 600 }}>WhatsApp</div>
           </button>
-          <button onClick={() => setMainTab("perfil")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "4px 10px", color: mainTab === "perfil" ? COLORS.accent : COLORS.textDim }}>
-            <div style={{ display: "flex", transform: mainTab === "perfil" ? "scale(1.1)" : "scale(1)", transition: "all var(--dur-base) var(--ease-standard)" }}><Icon name="user" size={20} /></div>
-            <div style={{ fontSize: 9, fontWeight: mainTab === "perfil" ? 700 : 400 }}>Perfil</div>
-          </button>
+          {/* Perfil salió del bottom-nav: se llega desde el avatar de la barra de arriba. */}
         </div>
         <button className="mobile-fab" data-tour="add-btn" onClick={() => setPanel("transacciones")} style={{ position: "fixed", right: 20, bottom: "calc(28px + env(safe-area-inset-bottom))", width: 56, height: 56, borderRadius: "50%", background: COLORS.accent, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 16px ${COLORS.accent}60`, zIndex: 70 }}>
           <span style={{ color: "#fff", fontSize: 26, fontWeight: 700, lineHeight: 1 }}>+</span>
@@ -2638,47 +2635,17 @@ function InicioTab({ data, save, displayName, monthTxs, totalIncome, totalExpens
   return (
     <div className="inicio-layout">
       <div className="inicio-primary">
-        <div>
-          <div style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 2 }}>{greeting},</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{displayName}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 2 }}>{greeting},</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{displayName}</div>
+          </div>
+          <DatePillPicker light selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
         </div>
 
-        {/* Hero balance -- calcado de la app real: "BALANCE DISPONIBLE" (antes
-            "Balance del mes"), Ingresos/Gastos en una sola línea con puntos de
-            color en vez del grid de 4 stats con flechas de antes. Deuda total
-            y Ahorro total siguen viéndose en sus propios accesos rápidos
-            (Deudas/Ahorros) más abajo -- no se pierde el dato, solo se saca
-            del hero para calcar el diseño real, que no lo incluye acá. */}
-        <div style={{ background: `linear-gradient(135deg, ${COLORS.accent} 0%, #002f28 100%)`, borderRadius: 28, padding: "22px 24px 20px", boxShadow: `0 12px 48px ${COLORS.accent}28`, position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -50, right: -50, width: 200, height: 200, borderRadius: "50%", background: "#ffffff0d", pointerEvents: "none" }} />
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, color: "#ffffffaa", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>Balance disponible</div>
-              <button onClick={() => setHideBalance(!hideBalance)} aria-label={hideBalance ? "Mostrar balance" : "Ocultar balance"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}><EyeToggleIcon shown={!hideBalance} color="#ffffffcc" size={17} /></button>
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
-              {hideBalance ? (
-                <span style={{ fontSize: 40, fontWeight: 300, color: "#fff", fontFamily: "'Nunito', sans-serif" }}>••••••</span>
-              ) : (
-                <>
-                  <span style={{ fontSize: 26, fontWeight: 400, color: "#ffffffcc", fontFamily: "'Nunito', sans-serif" }}>{balance < 0 ? "-$" : "$"}</span>
-                  <span style={{ fontSize: 52, fontWeight: 300, color: "#fff", fontFamily: "'Nunito', sans-serif", letterSpacing: -2, lineHeight: 1 }}>{Math.abs(balance).toLocaleString("es-AR", { maximumFractionDigits: 0 })}</span>
-                </>
-              )}
-            </div>
-            <div style={{ fontSize: 13, color: "#ffffffb3", marginBottom: 12 }}>{MONTH_NAMES[data.selectedMonth]} {data.selectedYear}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#ffffffdd", fontWeight: 500 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ADE80", flexShrink: 0 }} />
-                Ingresos {hideBalance ? "••••" : formatFull(totalIncome)}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#ffffffdd", fontWeight: 500 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F87171", flexShrink: 0 }} />
-                Gastos {hideBalance ? "••••" : formatFull(totalExpense)}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Card de balance del mes (misma que la columna izquierda del boceto):
+            balance grande + Ingresos / Gastos / Ahorro + barra apilada. */}
+        <BalanceCard data={data} />
 
         {totalBudget > 0 && (
           <Card style={{ padding: 14 }}>
