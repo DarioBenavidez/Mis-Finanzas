@@ -1451,27 +1451,46 @@ function FinanzasApp() {
 
   const defaultData = makeDefaultData();
 
+  // authLoadingRef espeja authLoading para leerlo dentro del listener de auth
+  // (el state estaría stale). sessionSettledRef: ya sabíamos que había sesión
+  // (restaurada en un refresh) → un SIGNED_IN posterior NO es un login nuevo.
+  const authLoadingRef = useRef(true);
+  const sessionSettledRef = useRef(false);
+
   // Check existing session on mount
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes("type=recovery")) {
       setResetMode(true);
       setAuthLoading(false);
+      authLoadingRef.current = false;
       return;
     }
 
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) sessionSettledRef.current = true;
       setUser(session?.user || null);
       setAuthLoading(false);
+      authLoadingRef.current = false;
     });
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setResetMode(true);
         setUser(session?.user || null);
-      } else {
-        setUser(session?.user || null);
-        setResetMode(false);
+        return;
       }
+      setUser(session?.user || null);
+      setResetMode(false);
+      // Login recién hecho desde la pantalla de login (no una restauración de
+      // sesión en un refresh): arrancar SIEMPRE en Inicio, ignorando el hash
+      // viejo (#/perfil, #/deudas, …) que pudiera haber quedado en la URL de
+      // una sesión anterior.
+      if (event === "SIGNED_IN" && session?.user && !sessionSettledRef.current && !authLoadingRef.current) {
+        setMainTab("inicio");
+        setPanel(null);
+        try { window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/inicio"); } catch (e) {}
+      }
+      if (session?.user) sessionSettledRef.current = true;
     });
     return () => subscription.unsubscribe();
   }, []);
