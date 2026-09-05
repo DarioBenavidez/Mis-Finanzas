@@ -124,6 +124,7 @@
        cuelgan de .app-shell). Auth y landing quedan afuera a propósito. */
     .app-shell { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
     .app-main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .topbar-inner { width: 100%; max-width: 720px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; }
     .content-area { flex: 1; width: 100%; overflow-y: auto; max-width: 720px; margin: 0 auto; padding: 20px 16px 110px; box-sizing: border-box; }
     .inicio-layout { display: flex; flex-direction: column; gap: 16px; }
     .inicio-primary { display: flex; flex-direction: column; gap: 16px; }
@@ -182,6 +183,9 @@
            su propio scroll, así la izquierda NO se mueve al cambiar de sección. */
         overflow: hidden;
       }
+      /* La barra superior alinea su contenido (logo, Análisis/WhatsApp, avatar)
+         con el mismo margen que el resto de la página. */
+      .topbar-inner { max-width: 1680px; padding: 0 clamp(28px, 4vw, 72px); }
       .topbar-nueva {
         display: flex; align-items: center; gap: 7px; background: #C9A84C; color: #2b2205;
         border: none; border-radius: 999px; padding: 9px 16px; font-family: inherit;
@@ -1776,9 +1780,10 @@ function FinanzasApp() {
 
       <div className="app-main-col">
         {/* ── TOP HEADER (solo marca + mes/año, como el header fijo verde de la app) ── */}
-        <div className="topbar" style={{ background: COLORS.accent, padding: "0 20px", boxShadow: "0 1px 8px #00000020", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56, position: "sticky", top: 0, zIndex: 50, flexShrink: 0 }}>
+        <div className="topbar" style={{ background: COLORS.accent, boxShadow: "0 1px 8px #00000020", display: "flex", alignItems: "center", height: 56, position: "sticky", top: 0, zIndex: 50, flexShrink: 0 }}>
+         <div className="topbar-inner">
           <div className="topbar-brand" style={{ display: "flex", alignItems: "center" }}>
-            <img src="assets/orbe-logo-wordmark.png" alt="Orbe" style={{ width: 84, height: "auto", display: "block" }} />
+            <img src="assets/orbe-logo-wordmark.png" alt="Orbe" style={{ width: 116, height: "auto", display: "block" }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {bocetoOn && (
@@ -1819,6 +1824,7 @@ function FinanzasApp() {
               </button>
             )}
           </div>
+         </div>
         </div>
 
         {/* ── CONTENIDO: escritorio = boceto (columna balance + nav + panel) para
@@ -2116,10 +2122,10 @@ const BOCETO_GROUPS = [
 // Cambiá `id` cada vez que cambie el mensaje: así se le vuelve a mostrar a
 // quien ya lo había cerrado.
 const HEADER_ANUNCIO = {
-  id: "wa-2026-09",
-  icon: "whatsapp",                         // "whatsapp" | nombre de Icon | null
-  text: "Cargá gastos por WhatsApp: escribile a Orbe “Gasté $12.000 en el super”.",
-  cta: { label: "Conectar", action: "wa" }, // action: "wa" | key de sección | null
+  id: "plan-free",
+  icon: "tag",                              // "whatsapp" | nombre de Icon | null
+  text: "Plan Free",
+  cta: null,                                // { label, action: "wa" | key de sección } | null
 };
 
 function HeaderAnuncio({ onNavigate, openWa }) {
