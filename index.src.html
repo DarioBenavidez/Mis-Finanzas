@@ -207,8 +207,9 @@
       /* Altura fija = viewport menos el topbar. Las dos columnas scrollean solas. */
       /* El saludo va en una fila propia que abarca las dos columnas, así la card
          de balance (izq) y la primera card del panel (der) quedan alineadas. */
-      .boceto { display: grid; grid-template-columns: 316px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px 32px; align-items: stretch; height: calc(100vh - 56px); padding-top: 20px; box-sizing: border-box; }
-      .boceto-head { grid-column: 1 / -1; font-size: 13px; color: #4A6B62; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .boceto { display: grid; grid-template-columns: 316px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 6px 32px; align-items: stretch; height: calc(100vh - 56px); padding-top: 12px; box-sizing: border-box; }
+      .boceto-head { grid-column: 1 / -1; font-size: 13px; color: #4A6B62; display: grid; grid-template-columns: 316px minmax(0, 1fr); align-items: center; column-gap: 32px; }
+      @media (max-width: 1160px) { .header-anuncio { display: none !important; } }
       .boceto-col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
       .boceto-hi { font-size: 13px; color: #4A6B62; flex-shrink: 0; }
       .boceto-balance {
@@ -1421,6 +1422,7 @@ function FinanzasApp() {
   const [mainTab, setMainTab] = useState("inicio"); // inicio | analisis | perfil
   const isDesktop = useMinWidth(1024); // ≥1024px la home usa la vista "boceto"
   const [panel, setPanel] = useState(null); // key de PLAN_PANELS, "transacciones", o null
+  const [nuevaTxTipo, setNuevaTxTipo] = useState("gasto"); // tipo con el que abre el sheet de "Nueva carga"
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dolarRate, setDolarRate] = useState(null);
@@ -1812,7 +1814,7 @@ function FinanzasApp() {
                 monthTxs={monthTxs} totalIncome={totalIncome} totalExpense={totalExpense}
                 showSnack={showSnack} user={user} displayName={displayName}
                 waPhone={waPhone} openWa={openWa} logout={logout}
-                onNuevaCarga={() => setPanel("transacciones")} />
+                onNuevaCarga={(tipo) => { setNuevaTxTipo(tipo === "ingreso" ? "ingreso" : "gasto"); setPanel("transacciones"); }} />
             </div>
           ) : (
             <div key={mainTab} className="tab-fade">
@@ -1893,7 +1895,7 @@ function FinanzasApp() {
           save={tourPhase === "income" || tourPhase === "expense" ? tourSave : save}
           savePlain={save}
           onClose={() => setPanel(null)}
-          initialType={tourPhase === "income" ? "ingreso" : tourPhase === "expense" ? "gasto" : "gasto"}
+          initialType={tourPhase === "income" ? "ingreso" : tourPhase === "expense" ? "gasto" : nuevaTxTipo}
           tourPhase={tourPhase}
         />
       )}
@@ -2088,6 +2090,88 @@ const BOCETO_GROUPS = [
   },
 ];
 
+// ── Anuncio del encabezado (barra "Hola, …") ──────────────────────────────
+// Espacio reservado para comunicar algo puntual: una novedad, una función
+// nueva, o un empujón a usar algo de Orbe. Editar HEADER_ANUNCIO cuando haya
+// algo que decir; `null` = no se muestra nada y el espacio queda libre.
+// Cambiá `id` cada vez que cambie el mensaje: así se le vuelve a mostrar a
+// quien ya lo había cerrado.
+const HEADER_ANUNCIO = {
+  id: "wa-2026-09",
+  icon: "whatsapp",                         // "whatsapp" | nombre de Icon | null
+  text: "Cargá gastos por WhatsApp: escribile a Orbe “Gasté $12.000 en el super”.",
+  cta: { label: "Conectar", action: "wa" }, // action: "wa" | key de sección | null
+};
+
+function HeaderAnuncio({ onNavigate, openWa }) {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem("orbe_anuncio_dismissed") === (HEADER_ANUNCIO && HEADER_ANUNCIO.id); } catch (e) { return false; }
+  });
+  if (!HEADER_ANUNCIO || dismissed) return null;
+  const a = HEADER_ANUNCIO;
+  const close = () => {
+    setDismissed(true);
+    try { localStorage.setItem("orbe_anuncio_dismissed", a.id); } catch (e) {}
+  };
+  const runCta = () => {
+    if (!a.cta) return;
+    if (a.cta.action === "wa") openWa();
+    else if (a.cta.action) onNavigate(a.cta.action);
+  };
+  // Centrado sobre la columna del panel (absoluto, no empuja alto ni se mete
+  // con "Nueva carga"/fecha). Solo la pill recibe clics.
+  return (
+    <div className="header-anuncio" style={{ position: "absolute", left: 0, width: "min(100%, 1180px)", top: "50%", transform: "translateY(-50%)", display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ pointerEvents: "auto", display: "flex", alignItems: "center", gap: 8, maxWidth: 470, background: COLORS.goldDim, border: "1px solid #C9A84C55", borderRadius: 999, padding: "3px 6px 3px 11px", minWidth: 0 }}>
+        {a.icon === "whatsapp"
+          ? <span style={{ color: COLORS.goldText, display: "flex", flexShrink: 0 }}><WhatsAppIcon size={13} color="currentColor" /></span>
+          : a.icon ? <span style={{ color: COLORS.goldText, display: "flex", flexShrink: 0 }}><Icon name={a.icon} size={13} /></span> : null}
+        <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.goldText, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{a.text}</span>
+        {a.cta && (
+          <button onClick={runCta} style={{ flexShrink: 0, background: COLORS.gold, color: "#2b2205", border: "none", borderRadius: 999, padding: "3px 11px", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 11, cursor: "pointer" }}>{a.cta.label}</button>
+        )}
+        <button onClick={close} aria-label="Cerrar aviso" style={{ flexShrink: 0, background: "none", border: "none", color: COLORS.goldText, cursor: "pointer", padding: 2, lineHeight: 1, fontSize: 12, display: "flex" }}>✕</button>
+      </div>
+    </div>
+  );
+}
+
+// "+ Nueva carga" con menú: al tocarlo abre Gasto / Ingreso; la opción elegida
+// abre el sheet de alta ya con ese tipo seleccionado.
+function NuevaCargaMenu({ onPick }) {
+  const [open, setOpen] = useState(false);
+  const pick = (tipo) => { setOpen(false); onPick(tipo); };
+  return (
+    <div style={{ position: "relative" }}>
+      <button className="topbar-nueva" data-tour="add-btn" onClick={() => setOpen(o => !o)}>
+        <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Nueva carga
+        <span style={{ fontSize: 10, opacity: .7, marginLeft: 2 }}>▾</span>
+      </button>
+      {open && (
+        <React.Fragment>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 100, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, boxShadow: "0 12px 32px #00000030", padding: 6, minWidth: 196 }}>
+            {[["gasto", "Gasto", COLORS.red], ["ingreso", "Ingreso", COLORS.green]].map(([tipo, label, color]) => (
+              <button key={tipo} onClick={() => pick(tipo)} style={{
+                display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+                background: "none", border: "none", borderRadius: 10, padding: "10px 12px",
+                fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 13.5, color: COLORS.text, cursor: "pointer",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                <span style={{ width: 22, height: 22, borderRadius: 7, background: color + "22", color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, lineHeight: 1 }}>{tipo === "gasto" ? "−" : "+"}</span>
+                </span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
 // Card de balance del mes (en la columna izquierda del boceto): balance grande +
 // desglose Ingresos / Gastos / Ahorro con variación vs. el mes anterior y barra
 // apilada proporcional. Trae su propio toggle de ocultar montos.
@@ -2183,11 +2267,12 @@ function BocetoLayout({ section, onNavigate, data, save, dolarRate, expByCat, mo
     <div className="boceto">
       <div className="boceto-head">
         <span>Hola, <b style={{ fontSize: 15, color: COLORS.text }}>{displayName}</b></span>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <DatePillPicker light selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
-          <button className="topbar-nueva" data-tour="add-btn" onClick={onNuevaCarga}>
-            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Nueva carga
-          </button>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-end", minWidth: 0 }}>
+          <HeaderAnuncio onNavigate={onNavigate} openWa={openWa} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <DatePillPicker light selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
+            <NuevaCargaMenu onPick={onNuevaCarga} />
+          </div>
         </div>
       </div>
       <div className="boceto-col">
