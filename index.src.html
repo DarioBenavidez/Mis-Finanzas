@@ -187,9 +187,28 @@
         border: none; border-radius: 999px; padding: 9px 16px; font-family: inherit;
         font-weight: 800; font-size: 12.5px; cursor: pointer; white-space: nowrap;
       }
+      .topbar-user { transition: background .15s; }
+      .topbar-user:hover { background: rgba(255,255,255,0.1); }
+      /* En pantallas medianas el nombre/email se ocultan y queda solo la foto. */
+      @media (max-width: 1200px) { .topbar-user-txt { display: none !important; } }
+      /* Análisis / WhatsApp en la barra de arriba (reemplazan al grupo "Cuenta"
+         del rail izquierdo). */
+      .topbar-nav { display: flex; gap: 4px; margin-left: 20px; }
+      .topbar-navbtn {
+        display: flex; align-items: center; gap: 8px; background: none; border: none;
+        color: rgba(255,255,255,0.8); font-family: 'Nunito', sans-serif; font-weight: 700;
+        font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+        white-space: nowrap; transition: background .15s, color .15s;
+      }
+      .topbar-navbtn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+      .topbar-navbtn.is-active { background: rgba(255,255,255,0.14); color: #fff; }
+      @media (max-width: 1120px) { .topbar-navbtn .lbl { display: none; } .topbar-nav { margin-left: 12px; } }
 
       /* Altura fija = viewport menos el topbar. Las dos columnas scrollean solas. */
-      .boceto { display: grid; grid-template-columns: 316px minmax(0, 1fr); gap: 32px; align-items: stretch; height: calc(100vh - 56px); padding-top: 22px; box-sizing: border-box; }
+      /* El saludo va en una fila propia que abarca las dos columnas, así la card
+         de balance (izq) y la primera card del panel (der) quedan alineadas. */
+      .boceto { display: grid; grid-template-columns: 316px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 12px 32px; align-items: stretch; height: calc(100vh - 56px); padding-top: 20px; box-sizing: border-box; }
+      .boceto-head { grid-column: 1 / -1; font-size: 13px; color: #4A6B62; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
       .boceto-col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
       .boceto-hi { font-size: 13px; color: #4A6B62; flex-shrink: 0; }
       .boceto-balance {
@@ -210,8 +229,15 @@
       .boceto-nav::-webkit-scrollbar { width: 6px; }
       .boceto-nav::-webkit-scrollbar-thumb { background: #bcd8cd; border-radius: 999px; }
       .boceto-panel { min-width: 0; max-width: 880px; overflow-y: auto; padding-right: 6px; padding-bottom: 40px; }
+      /* Inicio (panorama estilo dashboard) usa una grilla de cards de 3 columnas
+         y necesita más ancho que los paneles de sección normales. */
+      .boceto-panel.boceto-panel--wide { max-width: 1180px; }
       .boceto-panel::-webkit-scrollbar { width: 8px; }
       .boceto-panel::-webkit-scrollbar-thumb { background: #cfe4db; border-radius: 999px; }
+      /* Grilla sin gutters: las cards se tocan y el fondo de la grilla asoma como
+         línea de 1px entre ellas. Esquinas redondeadas solo en el marco exterior. */
+      .panorama-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #C8DDD6; border: 1px solid #C8DDD6; border-radius: 16px; overflow: hidden; }
+      @media (max-width: 1180px) { .panorama-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     }
 
     /* ── Pantalla de login/registro/reset: identidad visual pinneada calcada de
@@ -779,14 +805,15 @@ function Removable({ onRemove, duration = 140, children }) {
 // de hoy (informativo, no seleccionable): el modelo de datos de esta app solo
 // filtra por mes/año, igual que antes -- unificar visualmente los dos
 // selectores no cambia qué se puede elegir.
-function DatePillPicker({ selectedMonth, selectedYear, onChangeMonth, onChangeYear }) {
+function DatePillPicker({ selectedMonth, selectedYear, onChangeMonth, onChangeYear, light }) {
   const [open, setOpen] = useState(false);
   const day = new Date().getDate();
   return (
     <div style={{ position: "relative" }}>
       <button onClick={() => setOpen(o => !o)} style={{
-        background: "#ffffff1c", border: "none", borderRadius: 999, color: "#fff",
-        padding: "8px 16px", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
+        background: light ? COLORS.surface : "#ffffff1c", border: light ? `1px solid ${COLORS.border}` : "none",
+        borderRadius: 999, color: light ? COLORS.text : "#fff",
+        padding: light ? "7px 15px" : "8px 16px", fontFamily: "inherit", fontSize: 13, fontWeight: 700,
         cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
       }}>
         {day} / {MONTH_NAMES[selectedMonth]} / {selectedYear} <span style={{ fontSize: 10, opacity: .7 }}>▾</span>
@@ -1645,6 +1672,9 @@ function FinanzasApp() {
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const displayName = user?.user_metadata?.full_name || [user?.user_metadata?.nombre, user?.user_metadata?.apellido].filter(Boolean).join(" ") || (user?.email || "").split("@")[0];
+  // Foto de perfil: Supabase la guarda en user_metadata al entrar con Google
+  // (avatar_url / picture). Si no hay (alta con email), se usan las iniciales.
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
 
   if (loading || !data || !onboardingDecided) return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1731,11 +1761,42 @@ function FinanzasApp() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {bocetoOn && (
-              <button className="topbar-nueva" data-tour="add-btn" onClick={() => setPanel("transacciones")}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Nueva carga
+              <div className="topbar-nav">
+                <button
+                  className={"topbar-navbtn" + (mainTab === "analisis" && !panel ? " is-active" : "")}
+                  onClick={() => { setMainTab("analisis"); setPanel(null); }}
+                >
+                  <Icon name="chart" size={15} /> <span className="lbl">Análisis</span>
+                </button>
+                <button className="topbar-navbtn" onClick={openWa} style={waPhone ? { color: "#8CE6B4" } : undefined}>
+                  <WhatsAppIcon size={15} color="currentColor" /> <span className="lbl">{waPhone ? "WhatsApp conectado" : "WhatsApp"}</span>
+                </button>
+              </div>
+            )}
+            {!bocetoOn && (
+              <DatePillPicker selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
+            )}
+            {bocetoOn && (
+              <button
+                className="topbar-user"
+                onClick={() => { setMainTab("perfil"); setPanel(null); }}
+                aria-label="Ir a Perfil"
+                title={displayName}
+                style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "3px 4px 3px 6px", borderRadius: 999, marginLeft: 2 }}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "1.5px solid #ffffff40", flexShrink: 0 }} />
+                ) : (
+                  <span style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffffff26", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13, flexShrink: 0 }}>
+                    {(displayName || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="topbar-user-txt" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.25, minWidth: 0 }}>
+                  <span style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 12.5, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{displayName}</span>
+                  {user?.email && <span style={{ fontSize: 10.5, color: "#ffffff99", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150 }}>{user.email}</span>}
+                </span>
               </button>
             )}
-            <DatePillPicker selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
           </div>
         </div>
 
@@ -2027,26 +2088,71 @@ const BOCETO_GROUPS = [
   },
 ];
 
+// Card de balance del mes (en la columna izquierda del boceto): balance grande +
+// desglose Ingresos / Gastos / Ahorro con variación vs. el mes anterior y barra
+// apilada proporcional. Trae su propio toggle de ocultar montos.
+function BalanceCard({ data }) {
+  const [hide, setHide] = useState(false);
+  const MF = MONTH_FULL[data.selectedMonth];
+  const inMo = (m, y) => data.transactions.filter(t => { const p = parseDateParts(t.date); return p.month === m && p.year === y; });
+  const cur = inMo(data.selectedMonth, data.selectedYear);
+  const inc = cur.filter(isIncomeType).reduce((s, t) => s + t.amount, 0);
+  const gas = cur.filter(t => t.type === "gasto").reduce((s, t) => s + t.amount, 0);
+  const aho = cur.filter(t => t.type === "ahorro_meta").reduce((s, t) => s + t.amount, 0);
+  const bal = inc - gas - aho;
+  let pm = data.selectedMonth - 1, py = data.selectedYear;
+  if (pm < 0) { pm = 11; py--; }
+  const prev = inMo(pm, py);
+  const pInc = prev.filter(isIncomeType).reduce((s, t) => s + t.amount, 0);
+  const pGas = prev.filter(t => t.type === "gasto").reduce((s, t) => s + t.amount, 0);
+  const pAho = prev.filter(t => t.type === "ahorro_meta").reduce((s, t) => s + t.amount, 0);
+  const pBal = pInc - pGas - pAho;
+  const chg = (c, p) => p > 0 ? Math.round(((c - p) / p) * 100) : null;
+  const tri = inc + gas + aho || 1;
+  const lastDay = new Date(data.selectedYear, data.selectedMonth + 1, 0).getDate();
+  const cols = [
+    { k: "Ingresos", v: inc, pct: chg(inc, pInc), up: true, color: COLORS.green },
+    { k: "Gastos", v: gas, pct: chg(gas, pGas), up: false, color: COLORS.red },
+    { k: "Ahorro", v: aho, pct: chg(aho, pAho), up: true, color: COLORS.gold },
+  ];
+  const balPct = chg(bal, pBal);
+  // Card verde (como la original del boceto), con el desglose de 3 columnas.
+  const barCol = { Ingresos: "#4ADE80", Gastos: "#F87171", Ahorro: COLORS.goldL || "#E8C97A" };
+  return (
+    <div style={{ flexShrink: 0, background: "linear-gradient(155deg, #005247 0%, #00332c 100%)", color: "#fff", borderRadius: 20, padding: 18, boxShadow: "0 16px 34px -18px rgba(13,31,28,0.4)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 13 }}>Balance de {MF}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: "#ffffff99" }}>{MONTH_NAMES[data.selectedMonth]} · 1–{lastDay}</span>
+          <button onClick={() => setHide(v => !v)} aria-label={hide ? "Mostrar montos" : "Ocultar montos"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+            <EyeToggleIcon shown={!hide} color="#ffffffcc" size={16} />
+          </button>
+        </div>
+      </div>
+      <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 27, letterSpacing: "-0.03em", marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{hide ? "••••••" : formatFull(bal)}</div>
+      {balPct != null && !hide && (
+        <div style={{ fontSize: 11, fontWeight: 700, marginTop: 2, color: balPct >= 0 ? "#8CE6B4" : "#F8A9A9" }}>{balPct >= 0 ? "▲" : "▼"} {Math.abs(balPct)}% vs. {MONTH_NAMES[pm]}</div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 14 }}>
+        {cols.map((c, i) => (
+          <div key={c.k} style={{ paddingLeft: i === 0 ? 0 : 8, borderLeft: i === 0 ? "none" : "1px solid rgba(255,255,255,0.16)", minWidth: 0 }}>
+            <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12.5, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis" }}>{hide ? "••••" : formatFull(c.v)}</div>
+            <div style={{ fontSize: 10, color: "#ffffffaa", marginTop: 1 }}>{c.k}</div>
+            {c.pct != null && !hide && <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 4, color: ((c.pct >= 0) === c.up) ? "#8CE6B4" : "#F8A9A9" }}>{c.pct >= 0 ? "▲" : "▼"} {Math.abs(c.pct)}%</div>}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", height: 7, borderRadius: 99, overflow: "hidden", marginTop: 12, background: "rgba(255,255,255,0.14)" }}>
+        {cols.map(c => <div key={c.k} style={{ width: `${Math.round((c.v / tri) * 100)}%`, background: barCol[c.k] }} />)}
+      </div>
+    </div>
+  );
+}
+
 function BocetoLayout({ section, onNavigate, data, save, dolarRate, expByCat, monthTxs, totalIncome, totalExpense, showSnack, user, displayName, waPhone, openWa, logout, onNuevaCarga }) {
   // Controlado: `section` y `onNavigate` vienen de FinanzasApp (derivados de
   // mainTab/panel, que a su vez están atados a la URL). El boceto no tiene
   // estado de navegación propio — así no hay dos fuentes de verdad.
-  const [hideBalance, setHideBalance] = useState(false);
-  const balance = totalIncome - totalExpense;
-
-  // Variación del balance vs. el mes anterior al seleccionado. Mismo criterio de
-  // filtrado por mes/año que AnalisisTab (parseDateParts + isIncomeType/
-  // isExpenseType). Solo se muestra si el mes anterior tiene movimientos, para
-  // no mostrar "+100%" contra un mes vacío.
-  const prevBal = (() => {
-    let pm = data.selectedMonth - 1, py = data.selectedYear;
-    if (pm < 0) { pm = 11; py--; }
-    const pts = data.transactions.filter(t => { const p = parseDateParts(t.date); return p.month === pm && p.year === py; });
-    if (!pts.length) return null;
-    return pts.filter(isIncomeType).reduce((s, t) => s + t.amount, 0) - pts.filter(isExpenseType).reduce((s, t) => s + t.amount, 0);
-  })();
-  const balDelta = prevBal == null ? null : balance - prevBal;
-
   const panel = (() => {
     switch (section) {
       case "inicio": return <InicioPanorama data={data} dolarRate={dolarRate} expByCat={expByCat} onNavigate={onNavigate} />;
@@ -2075,33 +2181,17 @@ function BocetoLayout({ section, onNavigate, data, save, dolarRate, expByCat, mo
 
   return (
     <div className="boceto">
+      <div className="boceto-head">
+        <span>Hola, <b style={{ fontSize: 15, color: COLORS.text }}>{displayName}</b></span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <DatePillPicker light selectedMonth={data.selectedMonth} selectedYear={data.selectedYear} onChangeMonth={m => save({ ...data, selectedMonth: m })} onChangeYear={y => save({ ...data, selectedYear: y })} />
+          <button className="topbar-nueva" data-tour="add-btn" onClick={onNuevaCarga}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Nueva carga
+          </button>
+        </div>
+      </div>
       <div className="boceto-col">
-        <div className="boceto-hi">
-          Hola, <b style={{ fontSize: 15, color: COLORS.text }}>{displayName}</b>
-        </div>
-
-        <div className="boceto-balance">
-          <div className="k-row">
-            <div className="k">Balance · {MONTH_NAMES[data.selectedMonth]} {data.selectedYear}</div>
-            <button
-              onClick={() => setHideBalance(v => !v)}
-              aria-label={hideBalance ? "Mostrar montos" : "Ocultar montos"}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", flexShrink: 0 }}
-            >
-              <EyeToggleIcon shown={!hideBalance} color="#ffffffcc" size={17} />
-            </button>
-          </div>
-          <div className="v">{hideBalance ? "••••••" : `${balance < 0 ? "−" : ""}${formatFull(balance).replace(/^-/, "")}`}</div>
-          {balDelta != null && !hideBalance && (
-            <div className="delta" style={{ color: balDelta >= 0 ? "#8CE6B4" : "#F8A9A9" }}>
-              {balDelta >= 0 ? "▲" : "▼"} {formatFull(Math.abs(balDelta))} vs. {MONTH_NAMES[(data.selectedMonth + 11) % 12]}
-            </div>
-          )}
-          <div className="split">
-            <span><span className="d" style={{ background: "#4ADE80" }} /> Ingresos {hideBalance ? "••••" : formatFull(totalIncome)}</span>
-            <span><span className="d" style={{ background: "#F87171" }} /> Gastos {hideBalance ? "••••" : formatFull(totalExpense)}</span>
-          </div>
-        </div>
+        <BalanceCard data={data} />
 
         <div className="boceto-nav">
           {BOCETO_GROUPS.map(g => (
@@ -2114,21 +2204,12 @@ function BocetoLayout({ section, onNavigate, data, save, dolarRate, expByCat, mo
               ))}
             </React.Fragment>
           ))}
-          <div className="boceto-navgroup">Cuenta</div>
-          <button onClick={() => onNavigate("analisis")} style={navBtn(section === "analisis")}>
-            <span style={{ color: section === "analisis" ? COLORS.gold : COLORS.accent, display: "flex" }}><Icon name="chart" /></span> Análisis
-          </button>
-          <button onClick={openWa} style={{ ...navBtn(false), color: waPhone ? COLORS.green : COLORS.text }}>
-            <span style={{ display: "flex", color: waPhone ? COLORS.green : COLORS.accent }}><WhatsAppIcon size={17} color="currentColor" /></span>
-            {waPhone ? "WhatsApp conectado" : "Conectar WhatsApp"}
-          </button>
-          <button onClick={() => onNavigate("perfil")} style={navBtn(section === "perfil")}>
-            <span style={{ color: section === "perfil" ? COLORS.gold : COLORS.accent, display: "flex" }}><Icon name="user" /></span> Perfil
-          </button>
+          {/* Análisis, WhatsApp y Perfil salieron del rail: viven en la barra de
+              arriba (Análisis/WhatsApp como botones, Perfil en el avatar). */}
         </div>
       </div>
 
-      <div className="boceto-panel">
+      <div className={"boceto-panel" + (section === "inicio" ? " boceto-panel--wide" : "")}>
         <ErrorBoundary key={section} fallback={() => (
           <div style={{ padding: "28px 8px", textAlign: "center" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: COLORS.accent }}>No se pudo abrir esta sección</div>
@@ -2153,13 +2234,46 @@ function InicioPanorama({ data, dolarRate, expByCat, onNavigate }) {
   const isCurrentMonth = data.selectedMonth === currentMonth && data.selectedYear === currentYear;
   const todayDay = new Date().getDate();
   const today = todayStr();
+  const MF = MONTH_FULL[data.selectedMonth];
 
-  // Presupuesto: "Gastado" = solo gastos (no ahorro_meta), igual que InicioTab.
+  // Ingresos / gastos del mes + mes anterior para la variación. (El balance
+  // grande vive en la columna izquierda, en BalanceCard.)
+  const inMonth = (m, y) => data.transactions.filter(t => { const p = parseDateParts(t.date); return p.month === m && p.year === y; });
+  const monthTxs2 = inMonth(data.selectedMonth, data.selectedYear);
+  const mIncome = monthTxs2.filter(isIncomeType).reduce((s, t) => s + t.amount, 0);
+  const mGasto = monthTxs2.filter(t => t.type === "gasto").reduce((s, t) => s + t.amount, 0);
+  let pMonth = data.selectedMonth - 1, pYear = data.selectedYear;
+  if (pMonth < 0) { pMonth = 11; pYear--; }
+  const prevTxs = inMonth(pMonth, pYear);
+  const pIncome = prevTxs.filter(isIncomeType).reduce((s, t) => s + t.amount, 0);
+  const pGasto = prevTxs.filter(t => t.type === "gasto").reduce((s, t) => s + t.amount, 0);
+  const pctChg = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+
+  // 6 meses: ingresos vs. gastos (mismo criterio que AnalisisTab).
+  const months6 = Array.from({ length: 6 }, (_, i) => {
+    let m = data.selectedMonth - 5 + i, y = data.selectedYear;
+    while (m < 0) { m += 12; y--; }
+    const txs = inMonth(m, y);
+    return { label: MONTH_NAMES[m], inc: txs.filter(isIncomeType).reduce((s, t) => s + t.amount, 0), exp: txs.filter(t => t.type === "gasto").reduce((s, t) => s + t.amount, 0) };
+  });
+  const max6 = Math.max(...months6.flatMap(x => [x.inc, x.exp]), 1);
+
+  // Presupuesto
   const spent = Object.values(expByCat).reduce((s, v) => s + v, 0);
   const budgets = data.budgets.filter(b => b.limit > 0)
     .map(b => ({ ...b, spent: expByCat[b.cat] || 0 }))
     .sort((a, b) => (b.spent / b.limit) - (a.spent / a.limit));
   const totalBudget = budgets.reduce((s, b) => s + b.limit, 0);
+
+  // Gastos por categoría (donut vía conic-gradient).
+  const DONUT = ["#005247", "#C9A84C", "#2E9E6B", "#E11D48", "#3B82F6", "#8A6A16", "#7EC8AE"];
+  const catEntries = Object.entries(expByCat).sort((a, b) => b[1] - a[1]);
+  const catTotal = catEntries.reduce((s, e) => s + e[1], 0);
+  const catTop = catEntries.slice(0, 5).map((e, i) => ({ cat: e[0], v: e[1], color: DONUT[i] }));
+  const catRest = catEntries.slice(5).reduce((s, e) => s + e[1], 0);
+  const catSegs = catRest > 0 ? [...catTop, { cat: "Otras", v: catRest, color: COLORS.border }] : catTop;
+  let acc = 0;
+  const donutStops = (catTotal > 0 ? catSegs : []).map(s => { const a = acc / catTotal * 360; acc += s.v; const b = acc / catTotal * 360; return `${s.color} ${a}deg ${b}deg`; }).join(", ");
 
   // Ahorros / Deudas: mismos cálculos que FinanzasApp (soporte USD con cotización).
   const totalSavings = data.savings.reduce((s, g) => s + (g.currency === "usd" ? (g.current || 0) * (dolarRate || g.arsRate || 0) : (g.current || 0)), 0);
@@ -2168,9 +2282,7 @@ function InicioPanorama({ data, dolarRate, expByCat, onNavigate }) {
   const totalDebt = data.debts.reduce((s, d) => s + (d.currency === "usd" ? (d.remainingUSD || 0) * (dolarRate || d.arsRate || 0) : d.remaining), 0);
   const debtMonthly = data.debts.reduce((s, d) => s + (d.installment || 0), 0);
 
-  // Próximo a vencer: turnos futuros + vencimientos del mes en curso (a 14 días),
-  // fusionados y ordenados por fecha. Los eventos traen solo `day` (del mes
-  // seleccionado); se les arma una fecha para poder ordenar contra los turnos.
+  // Próximo a vencer: turnos futuros + vencimientos del mes en curso (a 14 días).
   const upTurnos = (data.turnos || [])
     .filter(t => t.date >= today && !t.cancelled)
     .map(t => ({ id: "t" + t.id, color: COLORS.accent, label: t.description, when: t.date + (t.time ? ` · ${t.time}` : ""), ts: new Date(t.date).getTime() }));
@@ -2178,105 +2290,172 @@ function InicioPanorama({ data, dolarRate, expByCat, onNavigate }) {
     .filter(e => e.day - todayDay >= 0 && e.day - todayDay <= 14)
     .map(e => ({ id: "e" + e.id, color: eventType(e.type).color, label: `${eventType(e.type).label} · ${e.title}`, when: e.day - todayDay === 0 ? "hoy" : `en ${e.day - todayDay} día${e.day - todayDay === 1 ? "" : "s"}`, ts: new Date(data.selectedYear, data.selectedMonth, e.day).getTime() }))
     : [];
-  const upcoming = [...upTurnos, ...upVenc].sort((a, b) => a.ts - b.ts).slice(0, 6);
+  const upcoming = [...upTurnos, ...upVenc].sort((a, b) => a.ts - b.ts).slice(0, 4);
 
-  // Últimos movimientos: 3 más recientes por fecha real (no por orden de inserción).
-  const lastTxs = [...data.transactions].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  // Movimientos recientes, por fecha real.
+  const byDateDesc = (a, b) => b.date.localeCompare(a.date);
+  const lastIncome = [...data.transactions].filter(isIncomeType).sort(byDateDesc).slice(0, 2);
+  const lastGasto = [...data.transactions].filter(t => t.type === "gasto").sort(byDateDesc).slice(0, 2);
+  const lastTxs = [...data.transactions].sort(byDateDesc).slice(0, 5);
 
-  const cardH = { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 };
-  const h2 = { fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 15 };
-  const link = (to, label) => (
-    <button onClick={() => onNavigate(to)} style={{ background: "none", border: "none", color: COLORS.accent, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{label} →</button>
+  const H = { fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14 };
+  const K = { fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: COLORS.textDim, fontWeight: 700 };
+  const cta = (to, label, mt) => (
+    <button onClick={() => onNavigate(to)} style={{ background: "none", border: "none", color: COLORS.accent, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0, marginTop: mt || 0 }}>{label} →</button>
+  );
+  const cardHead = (title, to, label) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
+      <div style={H}>{title}</div>
+      {to && cta(to, label)}
+    </div>
+  );
+  const txRow = (t, key) => (
+    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${COLORS.border}` }}>
+      <div style={{ width: 30, height: 30, borderRadius: 9, background: isIncomeType(t) ? COLORS.greenDim : COLORS.redDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{catIcon(data, t.category)}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.description || t.category}</div>
+        <div style={{ fontSize: 10.5, color: COLORS.textMuted }}>{t.date} · {t.category}</div>
+      </div>
+      <div style={{ fontWeight: 700, fontSize: 12.5, color: isIncomeType(t) ? COLORS.green : COLORS.red, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{isIncomeType(t) ? "+" : "-"}{formatFull(t.amount)}</div>
+    </div>
+  );
+  const deltaLine = (pct, up) => pct == null ? null : (
+    <span style={{ fontSize: 11, fontWeight: 700, color: ((pct >= 0) === up) ? COLORS.green : COLORS.red }}>{pct >= 0 ? "▲" : "▼"} {Math.abs(pct)}% vs. {MONTH_NAMES[pMonth]}</span>
   );
 
+  // Reset para que las cards vivan pegadas dentro de .panorama-grid (sin sombra
+  // ni radio propio; el separador es la línea de 1px del fondo de la grilla).
+  const P = { padding: 20, boxShadow: "none", border: "none", borderRadius: 0 };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <h1 style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: "-0.02em" }}>
-        {MONTH_FULL[data.selectedMonth]} de un vistazo
-      </h1>
+    <div className="panorama-wrap">
+      <div className="panorama-grid">
+        {/* ── INGRESOS ── */}
+        <Card style={P}>
+          <div style={K}>Ingresos de {MF}</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 25, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{formatFull(mIncome)}</div>
+          <div style={{ minHeight: 15, marginTop: 3 }}>{deltaLine(pctChg(mIncome, pIncome), true)}</div>
+          <div style={{ ...K, marginTop: 14, marginBottom: 2 }}>Últimos ingresos</div>
+          {lastIncome.length ? lastIncome.map((t, i) => txRow(t, "in" + i)) : <div style={{ fontSize: 12, color: COLORS.textMuted, padding: "9px 0" }}>Sin ingresos registrados.</div>}
+          {cta("movimientos", "Ver movimientos", 10)}
+        </Card>
 
-      <Card>
-        <div style={cardH}>
-          <h2 style={h2}>Presupuesto del mes</h2>
-          {link("presupuesto", "Ir a Presupuesto")}
-        </div>
-        {totalBudget > 0 ? (
-          <React.Fragment>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: COLORS.textMuted, marginBottom: 8 }}>
-              <span>Gastado</span>
-              <span><b style={{ color: COLORS.text }}>{formatFull(spent)}</b> de {formatFull(totalBudget)}</span>
-            </div>
-            <ProgressBar value={spent} max={totalBudget} height={8} />
-            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-              {budgets.map(b => (
-                <div key={b.cat} style={{ display: "grid", gridTemplateColumns: "130px 1fr auto", gap: 12, alignItems: "center", fontSize: 13 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catIcon(data, b.cat)} {b.cat}</span>
-                  <ProgressBar value={b.spent} max={b.limit} height={6} />
-                  <b style={{ fontVariantNumeric: "tabular-nums", color: COLORS.textMuted, fontWeight: 600 }}>{formatFull(b.spent)} / {formatFull(b.limit)}</b>
+        {/* ── GASTOS ── */}
+        <Card style={P}>
+          <div style={K}>Gastos de {MF}</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 25, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{formatFull(mGasto)}</div>
+          <div style={{ minHeight: 15, marginTop: 3 }}>{deltaLine(pctChg(mGasto, pGasto), false)}</div>
+          <div style={{ ...K, marginTop: 14, marginBottom: 2 }}>Últimos gastos</div>
+          {lastGasto.length ? lastGasto.map((t, i) => txRow(t, "gs" + i)) : <div style={{ fontSize: 12, color: COLORS.textMuted, padding: "9px 0" }}>Sin gastos registrados.</div>}
+          {cta("movimientos", "Ver movimientos", 10)}
+        </Card>
+
+        {/* ── AHORROS ── */}
+        <Card style={{ ...P, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={K}>Ahorros</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 24, marginTop: 5, fontVariantNumeric: "tabular-nums" }}>{formatFull(totalSavings)}</div>
+          <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{savingsGoals === 0 ? "Sin metas activas" : `${savingsGoals} meta${savingsGoals === 1 ? "" : "s"}${savingsDone > 0 ? ` · ${savingsDone} completada${savingsDone === 1 ? "" : "s"} 🎉` : ""}`}</div>
+          {cta("ahorros", "Ver ahorros", 12)}
+        </Card>
+
+        {/* ── PRESUPUESTO (span 2) ── */}
+        <Card style={{ ...P, gridColumn: "span 2" }}>
+          {cardHead("Presupuesto del mes", "presupuesto", "Ir a Presupuesto")}
+          {totalBudget > 0 ? (
+            <React.Fragment>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: COLORS.textMuted, marginBottom: 8 }}>
+                <span>Gastado</span><span><b style={{ color: COLORS.text }}>{formatFull(spent)}</b> de {formatFull(totalBudget)}</span>
+              </div>
+              <ProgressBar value={spent} max={totalBudget} height={8} />
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                {budgets.slice(0, 4).map(b => (
+                  <div key={b.cat} style={{ display: "grid", gridTemplateColumns: "128px 1fr 44px", gap: 12, alignItems: "center", fontSize: 12.5 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catIcon(data, b.cat)} {b.cat}</span>
+                    <ProgressBar value={b.spent} max={b.limit} height={6} />
+                    <b style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: COLORS.textMuted, fontWeight: 600 }}>{Math.round((b.spent / b.limit) * 100)}%</b>
+                  </div>
+                ))}
+              </div>
+            </React.Fragment>
+          ) : <div style={{ fontSize: 12, color: COLORS.textMuted }}>Todavía no definiste presupuestos por categoría.</div>}
+        </Card>
+
+        {/* ── DEUDAS ── */}
+        <Card style={{ ...P, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={K}>Deudas</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 24, marginTop: 5, fontVariantNumeric: "tabular-nums" }}>{formatFull(totalDebt)}</div>
+          <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{debtMonthly > 0 ? `${formatFull(debtMonthly)} en cuotas este mes` : totalDebt > 0 ? "Sin cuotas mensuales cargadas" : "Sin deudas 🎉"}</div>
+          {cta("deudas", "Ver deudas", 12)}
+        </Card>
+
+        {/* ── 6 MESES (span 2) ── */}
+        <Card style={{ ...P, gridColumn: "span 2", display: "flex", flexDirection: "column" }}>
+          {cardHead(`Ingresos vs. gastos · últimos 6 meses`, "analisis", "Ver análisis")}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flex: 1, minHeight: 150 }}>
+            {months6.map(mo => (
+              <div key={mo.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%" }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 4, width: "100%", justifyContent: "center" }}>
+                  <div style={{ width: 12, height: `${Math.max(3, (mo.inc / max6) * 100)}%`, background: COLORS.green, borderRadius: "3px 3px 0 0" }} />
+                  <div style={{ width: 12, height: `${Math.max(3, (mo.exp / max6) * 100)}%`, background: COLORS.red, borderRadius: "3px 3px 0 0" }} />
                 </div>
-              ))}
-            </div>
-          </React.Fragment>
-        ) : (
-          <div style={{ fontSize: 13, color: COLORS.textMuted }}>Todavía no definiste presupuestos por categoría.</div>
-        )}
-      </Card>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-        <Card>
-          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: COLORS.textDim, fontWeight: 700 }}>Ahorros</div>
-          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 24, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{formatFull(totalSavings)}</div>
-          <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>
-            {savingsGoals === 0 ? "Sin metas activas" : `${savingsGoals} meta${savingsGoals === 1 ? "" : "s"}${savingsDone > 0 ? ` · ${savingsDone} completada${savingsDone === 1 ? "" : "s"} 🎉` : ""}`}
-          </div>
-        </Card>
-        <Card>
-          <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: COLORS.textDim, fontWeight: 700 }}>Deudas</div>
-          <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 24, marginTop: 6, fontVariantNumeric: "tabular-nums" }}>{formatFull(totalDebt)}</div>
-          <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>
-            {debtMonthly > 0 ? `${formatFull(debtMonthly)} en cuotas este mes` : totalDebt > 0 ? "Sin cuotas mensuales cargadas" : "Sin deudas 🎉"}
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <div style={cardH}>
-          <h2 style={h2}>Próximo a vencer</h2>
-          {link("calendario", "Ver calendario")}
-        </div>
-        {upcoming.length === 0 ? (
-          <div style={{ fontSize: 13, color: COLORS.textMuted }}>No hay turnos ni vencimientos próximos.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {upcoming.map((u, i) => (
-              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < upcoming.length - 1 ? `1px solid ${COLORS.border}` : "none", fontSize: 13 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: u.color, flexShrink: 0 }} />
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.label}</span>
-                <span style={{ marginLeft: "auto", color: COLORS.textMuted, fontSize: 12, flexShrink: 0 }}>{u.when}</span>
+                <div style={{ fontSize: 10.5, color: COLORS.textMuted }}>{mo.label}</div>
               </div>
             ))}
           </div>
-        )}
-      </Card>
-
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ ...cardH, marginBottom: 0, padding: "20px 24px 14px" }}>
-          <h2 style={h2}>Últimos movimientos</h2>
-          {link("movimientos", "Ver todos")}
-        </div>
-        {lastTxs.length === 0 ? (
-          <div style={{ padding: "0 24px 24px", fontSize: 13, color: COLORS.textMuted }}>Todavía no cargaste movimientos.</div>
-        ) : lastTxs.map(t => (
-          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", borderTop: `1px solid ${COLORS.border}` }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: isIncomeType(t) ? COLORS.greenDim : COLORS.redDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>{catIcon(data, t.category)}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 500, fontSize: 13 }}>{t.description || t.category}</div>
-              <div style={{ fontSize: 11, color: COLORS.textMuted }}>{t.date} · {t.category}</div>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: isIncomeType(t) ? COLORS.green : COLORS.red, fontVariantNumeric: "tabular-nums" }}>{isIncomeType(t) ? "+" : "-"}{formatFull(t.amount)}</div>
+          <div style={{ display: "flex", gap: 16, marginTop: 12, justifyContent: "center", fontSize: 11, color: COLORS.textMuted }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS.green }} /> Ingresos</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: COLORS.red }} /> Gastos</span>
           </div>
-        ))}
-      </Card>
+        </Card>
+
+        {/* ── DONUT categorías ── */}
+        <Card style={P}>
+          {cardHead("Gastos por categoría", null)}
+          {catTotal > 0 ? (
+            <React.Fragment>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                <div style={{ width: 128, height: 128, borderRadius: "50%", background: `conic-gradient(${donutStops})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 82, height: 82, borderRadius: "50%", background: COLORS.surface, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ fontSize: 9, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</div>
+                    <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 12.5, fontVariantNumeric: "tabular-nums" }}>{formatFull(catTotal)}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {catSegs.map(s => (
+                  <div key={s.cat} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.cat}</span>
+                    <b style={{ fontVariantNumeric: "tabular-nums", color: COLORS.textMuted, fontWeight: 600 }}>{Math.round((s.v / catTotal) * 100)}%</b>
+                  </div>
+                ))}
+              </div>
+            </React.Fragment>
+          ) : <div style={{ fontSize: 12, color: COLORS.textMuted }}>Sin gastos este mes.</div>}
+        </Card>
+
+        {/* ── PRÓXIMO A VENCER (ancho completo) ── */}
+        <Card style={{ ...P, gridColumn: "1 / -1" }}>
+          {cardHead("Próximo a vencer", "calendario", "Ver calendario")}
+          {upcoming.length === 0 ? <div style={{ fontSize: 12, color: COLORS.textMuted }}>No hay turnos ni vencimientos próximos.</div> : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {upcoming.map((u, i) => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: i < upcoming.length - 1 ? `1px solid ${COLORS.border}` : "none", fontSize: 12.5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: u.color, flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.label}</span>
+                  <span style={{ marginLeft: "auto", color: COLORS.textMuted, fontSize: 11.5, flexShrink: 0 }}>{u.when}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* ── ÚLTIMOS MOVIMIENTOS (ancho completo) ── */}
+        <Card style={{ ...P, padding: "20px 20px 10px", gridColumn: "1 / -1" }}>
+          {cardHead("Últimos movimientos", "movimientos", "Ver todos")}
+          {lastTxs.length === 0 ? <div style={{ fontSize: 12, color: COLORS.textMuted, paddingBottom: 10 }}>Todavía no cargaste movimientos.</div> : lastTxs.map((t, i) => txRow(t, "all" + i))}
+        </Card>
+      </div>
     </div>
   );
 }

@@ -37,8 +37,11 @@ for (const w of warnings) console.warn("esbuild:", w.text);
 
 // 3. re-inyectar como <script> plano. Escapar cualquier "</script>" que
 //    hubiera quedado dentro de un string del bundle (rompería el inline).
+//    Replacer como FUNCIÓN, no string: el bundle minificado puede contener
+//    secuencias `$&` / `$\`` / `$'` que, en un replacement string, reinyectan
+//    partes del match y duplican el archivo entero.
 const safe = code.replace(/<\/script>/gi, "<\\/script>");
-out = out.replace(re, `<script>\n${safe}\n</script>`);
+out = out.replace(re, () => `<script>\n${safe}\n</script>`);
 
 writeFileSync(OUT, out);
 
