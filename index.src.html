@@ -774,7 +774,11 @@ function useModalA11y(onEscape, cardRef) {
     document.body.style.overflow = "hidden";
     const SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
     const focusables = () => cardRef.current ? Array.from(cardRef.current.querySelectorAll(SEL)).filter(el => el.offsetParent !== null) : [];
-    const t = setTimeout(() => { (focusables()[0] || cardRef.current)?.focus?.(); }, 20);
+    // Se enfoca el diálogo, NO su primer campo: al abrir "Nueva meta" el foco
+    // caía en "Nombre" y quien escribía el monto de una lo metía ahí (campo de
+    // texto, sin separadores de miles). El trap de Tab y el aria-modal siguen
+    // igual; el primer Tab lleva al primer campo.
+    const t = setTimeout(() => { (cardRef.current || focusables()[0])?.focus?.(); }, 20);
     const onKey = (e) => {
       if (e.key === "Escape") { e.preventDefault(); onEscape(); return; }
       if (e.key !== "Tab" || !cardRef.current) return;
@@ -3693,6 +3697,13 @@ function Deudas({ data, save, dolarRate }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {data.debts.map(d => {
             const pct = d.total > 0 ? Math.min(100, ((d.total - d.remaining) / d.total) * 100) : 0;
+            // "Cuota × cuotas restantes" casi nunca da justo el saldo: las cuotas
+            // salen de un Math.ceil, así que la última suele ser más chica. La
+            // mostramos aparte para que no parezca que se debe de más.
+            const lastInstallment = (d.installment > 0 && d.remainingInstallments > 1 && d.remaining > 0)
+              ? d.remaining - d.installment * (d.remainingInstallments - 1)
+              : 0;
+            const showLast = lastInstallment > 0 && lastInstallment < d.installment;
             return (
               <Removable key={d.id} onRemove={() => commitDeleteDebt(d.id)}>
               {({ remove, rowClass }) => (
@@ -3741,7 +3752,12 @@ function Deudas({ data, save, dolarRate }) {
                   <span style={{ color: COLORS.textMuted }}>{pct.toFixed(0)}% pagado</span>
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     {d.installment > 0 && <span>Cuota: <strong style={{ color: COLORS.text }}>{formatFull(d.installment)}</strong>/mes</span>}
-                    {d.remainingInstallments > 0 && <span>Cuotas restantes: <strong style={{ color: COLORS.text }}>{d.remainingInstallments}</strong></span>}
+                    {d.remainingInstallments > 0 && (
+                      <span>
+                        Cuotas restantes: <strong style={{ color: COLORS.text }}>{d.remainingInstallments}</strong>
+                        {showLast && <span> (la última, {formatFull(lastInstallment)})</span>}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="inline-edit-actions">
@@ -4594,7 +4610,17 @@ function Proyeccion({ data, save }) {
     const income = getIncome(m, y);
     const cuotas = activeDebts
       .filter(d => i < d.remainingInstallments)
-      .map(d => ({ name: d.name, amount: d.installment, color: DEBT_COLORS[activeDebts.indexOf(d) % DEBT_COLORS.length] }));
+      .map(d => {
+        // La última cuota casi nunca es igual a las demás: `remainingInstallments`
+        // sale de un Math.ceil(saldo / cuota), así que cuota × cuotas suele dar
+        // MÁS que el saldo real (ej: $100.000 en cuotas de $30.000 → 4 cuotas,
+        // pero la 4ª es de $10.000, no de $30.000). Proyectar la cuota completa
+        // los 4 meses inflaba el compromiso en $20.000.
+        const saldo = d.remaining > 0 ? d.remaining : d.installment * d.remainingInstallments;
+        const amount = Math.max(0, Math.min(d.installment, saldo - d.installment * i));
+        return { name: d.name, amount, color: DEBT_COLORS[activeDebts.indexOf(d) % DEBT_COLORS.length] };
+      })
+      .filter(c => c.amount > 0);
     const totalCuotas = cuotas.reduce((s, c) => s + c.amount, 0);
     const totalGasto = budgetTotal + gastosFijosTotal + totalCuotas;
     const balance = income - totalGasto;
@@ -4799,13 +4825,32 @@ function Proyeccion({ data, save }) {
                       <span style={{ color: COLORS.text }}>{formatFull(mo.totalGasto)}</span>
                     </div>
 
+                    {/* El ingreso estimado se muestra explícito: sin él, el "Te
+                        falta / Te sobra" de abajo salía de la nada — no se veía
+                        contra qué se estaba comparando el compromiso. */}
                     {mo.income > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, background: mo.balance >= 0 ? COLORS.greenDim : COLORS.redDim, borderRadius: 10, padding: "10px 14px", border: `1px solid ${mo.balance >= 0 ? COLORS.green : COLORS.red}40` }}>
-                        <span style={{ color: COLORS.text }}>
-                          {mo.balance >= 0 ? "Te sobra" : "Te falta"}
-                        </span>
-                        <span style={{ color: COLORS.text }}>
-                          {mo.balance >= 0 ? "+" : ""}{formatFull(mo.balance)}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "0 14px" }}>
+                        <span style={{ color: COLORS.textMuted }}>Ingreso estimado del mes</span>
+                        <span style={{ color: COLORS.text, fontWeight: 600 }}>{formatFull(mo.income)}</span>
+                      </div>
+                    )}
+
+                    {mo.income > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 700, background: mo.balance >= 0 ? COLORS.greenDim : COLORS.redDim, borderRadius: 10, padding: "10px 14px", border: `1px solid ${mo.balance >= 0 ? COLORS.green : COLORS.red}40` }}>
+                        <div>
+                          <div style={{ color: COLORS.text }}>
+                            {mo.balance >= 0 ? "Te sobra" : "Te falta"}
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
+                            {mo.balance >= 0
+                              ? "Después de cubrir todo lo comprometido"
+                              : "Lo comprometido supera al ingreso estimado"}
+                          </div>
+                        </div>
+                        {/* Valor absoluto: "Te falta -$1.000" se leía como doble
+                            negativo. El signo ya lo dice la etiqueta. */}
+                        <span style={{ color: COLORS.text, whiteSpace: "nowrap" }}>
+                          {formatFull(Math.abs(mo.balance))}
                         </span>
                       </div>
                     )}
