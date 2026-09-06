@@ -486,6 +486,53 @@ const catExists = (data, name) => !!(data.categories && data.categories[name]);
 // Igual que el backend: matching de categoría case-insensitive.
 const findCatCI = (data, name) => Object.keys(data.categories || {}).find(c => c.toLowerCase() === (name || "").toLowerCase());
 
+// Foto de perfil: Supabase la guarda en user_metadata al entrar con Google
+// (avatar_url o picture, según el proveedor). Si no hay -- alta con email --
+// devuelve null y quien la use cae en las iniciales.
+const avatarOf = (user) => user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+
+// Depósito a una meta de ahorro. Es el ÚNICO lugar que arma estos datos: lo
+// usan el sheet de "Nueva carga → Ahorro" y el "+ Agregar" de cada meta, así no
+// pueden divergir. Escribe siempre tres cosas -- saldo de la meta, su historial
+// y un movimiento `ahorro_meta` (misma forma que la app y el bot).
+//
+// El `origen` es lo que decide el efecto en el balance del mes:
+//   "sueldo" -> solo el movimiento de ahorro. La plata salió de un ingreso que
+//               ya estaba cargado, así que el balance baja: es plata que ya no
+//               tenés disponible, pero no es un gasto (queda como ahorro).
+//   "extra"  -> además se carga el ingreso con el detalle ("Venta de
+//               zapatillas"). Entró y salió el mismo monto, así que el balance
+//               no se mueve y el extra queda registrado en Movimientos.
+const buildAhorroDeposit = (data, { goal, amt, origen, detalle, date, dolarRate }) => {
+  const isUsd = goal.currency === "usd";
+  const amountARS = isUsd ? Math.round(amt * (goal.arsRate || dolarRate || 0)) : amt;
+  const savings = data.savings.map(s => s.id === goal.id
+    ? { ...s, current: (s.current || 0) + amt, history: [...(s.history || []), { date, amount: amt }] }
+    : s);
+  const txs = [];
+  if (origen === "extra") {
+    txs.push({
+      id: Date.now(),
+      type: "ingreso",
+      description: (detalle || "").trim() || `Extra para ${goal.name}`,
+      amount: amountARS,
+      category: findCatCI(data, "Otros") || "Otros",
+      date,
+    });
+  }
+  txs.push({
+    id: Date.now() + 1,
+    type: "ahorro_meta",
+    description: `Ahorro: ${goal.name}`,
+    amount: amountARS,
+    category: findCatCI(data, "Ahorro") || "Ahorro",
+    date,
+    savingsId: goal.id,
+    ...(isUsd ? { currency: "usd", amountUSD: amt } : {}),
+  });
+  return { ...data, savings, transactions: [...data.transactions, ...txs] };
+};
+
 function validatePassword(pw) {
   if (!pw || pw.length < 8) return "La contraseña debe tener al menos 8 caracteres";
   if (!/[A-Z]/.test(pw)) return "Debe incluir al menos una mayúscula";
@@ -664,6 +711,34 @@ function SegmentedControl({ label, options, value, onChange, style = {} }) {
         })}
       </div>
     </div>
+  );
+}
+
+// Pregunta compartida por los dos caminos que guardan plata en una meta
+// ("Nueva carga -> Ahorro" y el "+ Agregar" de cada meta): de dónde sale esa
+// plata. Es lo que decide si el balance del mes baja o no -- ver
+// buildAhorroDeposit. Si es un extra, se pide el detalle para que quede
+// cargado como ingreso en Movimientos.
+function OrigenAhorro({ origen, onOrigen, detalle, onDetalle }) {
+  return (
+    <React.Fragment>
+      <SegmentedControl
+        label="¿De dónde sale esa plata?"
+        options={[{ value: "sueldo", label: "De mi sueldo" }, { value: "extra", label: "De un extra" }]}
+        value={origen}
+        onChange={onOrigen}
+      />
+      <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: -8 }}>
+        {origen === "extra"
+          ? "Se carga el extra como ingreso y el ahorro como salida, así tu balance del mes no cambia."
+          : "Baja tu balance del mes, pero queda registrado como ahorro y no como gasto."}
+      </div>
+      {origen === "extra" && (
+        <div className="form-pop">
+          <Input label="¿De dónde salió?" value={detalle} onChange={onDetalle} placeholder="Ej: Venta de zapatillas" />
+        </div>
+      )}
+    </React.Fragment>
   );
 }
 
@@ -1706,9 +1781,7 @@ function FinanzasApp() {
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const displayName = user?.user_metadata?.full_name || [user?.user_metadata?.nombre, user?.user_metadata?.apellido].filter(Boolean).join(" ") || (user?.email || "").split("@")[0];
-  // Foto de perfil: Supabase la guarda en user_metadata al entrar con Google
-  // (avatar_url / picture). Si no hay (alta con email), se usan las iniciales.
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+  const avatarUrl = avatarOf(user);
 
   if (loading || !data || !onboardingDecided) return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1843,7 +1916,7 @@ function FinanzasApp() {
                 monthTxs={monthTxs} totalIncome={totalIncome} totalExpense={totalExpense}
                 showSnack={showSnack} user={user} displayName={displayName}
                 waPhone={waPhone} openWa={openWa} logout={logout}
-                onNuevaCarga={(tipo) => { setNuevaTxTipo(tipo === "ingreso" ? "ingreso" : "gasto"); setPanel("transacciones"); }} />
+                onNuevaCarga={(tipo) => { setNuevaTxTipo(NUEVA_CARGA_OPCIONES.some(o => o[0] === tipo) ? tipo : "gasto"); setPanel("transacciones"); }} />
             </div>
           ) : (
             <div key={mainTab} className="tab-fade">
@@ -1883,7 +1956,7 @@ function FinanzasApp() {
         </div>
         <MobileFabMenu
           tourActive={tourPhase === "income" || tourPhase === "expense"}
-          onPick={(tipo) => { setNuevaTxTipo(tipo === "ingreso" ? "ingreso" : "gasto"); setPanel("transacciones"); }}
+          onPick={(tipo) => { setNuevaTxTipo(NUEVA_CARGA_OPCIONES.some(o => o[0] === tipo) ? tipo : "gasto"); setPanel("transacciones"); }}
         />
       </div>
 
@@ -1924,6 +1997,7 @@ function FinanzasApp() {
           onClose={() => setPanel(null)}
           initialType={tourPhase === "income" ? "ingreso" : tourPhase === "expense" ? "gasto" : nuevaTxTipo}
           tourPhase={tourPhase}
+          dolarRate={dolarRate}
         />
       )}
 
@@ -2165,6 +2239,18 @@ function HeaderAnuncio({ onNavigate, openWa }) {
 
 // "+ Nueva carga" con menú: al tocarlo abre Gasto / Ingreso; la opción elegida
 // abre el sheet de alta ya con ese tipo seleccionado.
+// Las 3 cargas que ofrece la web, compartidas por el menú de escritorio y el
+// FAB de mobile para que no se desincronicen.
+// Nombres lindos para los tipos de movimiento que la web no ofrece crear pero
+// sí puede tener que mostrar al editar (los escribe el bot o la app).
+const TX_TYPE_LABELS = { gasto: "Gasto", ingreso: "Ingreso", ahorro_meta: "Ahorro", sueldo: "Sueldo" };
+
+const NUEVA_CARGA_OPCIONES = [
+  ["gasto", "Gasto", COLORS.red, "−"],
+  ["ingreso", "Ingreso", COLORS.green, "+"],
+  ["ahorro_meta", "Ahorro", COLORS.gold, "→"],
+];
+
 function NuevaCargaMenu({ onPick }) {
   const [open, setOpen] = useState(false);
   const pick = (tipo) => { setOpen(false); onPick(tipo); };
@@ -2178,7 +2264,7 @@ function NuevaCargaMenu({ onPick }) {
         <React.Fragment>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
           <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 100, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, boxShadow: "0 12px 32px #00000030", padding: 6, minWidth: 196 }}>
-            {[["gasto", "Gasto", COLORS.red], ["ingreso", "Ingreso", COLORS.green]].map(([tipo, label, color]) => (
+            {NUEVA_CARGA_OPCIONES.map(([tipo, label, color, sign]) => (
               <button key={tipo} onClick={() => pick(tipo)} style={{
                 display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
                 background: "none", border: "none", borderRadius: 10, padding: "10px 12px",
@@ -2187,7 +2273,7 @@ function NuevaCargaMenu({ onPick }) {
               onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
               onMouseLeave={e => e.currentTarget.style.background = "none"}>
                 <span style={{ width: 22, height: 22, borderRadius: 7, background: color + "22", color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, lineHeight: 1 }}>{tipo === "gasto" ? "−" : "+"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, lineHeight: 1 }}>{sign}</span>
                 </span>
                 {label}
               </button>
@@ -2210,7 +2296,7 @@ function MobileFabMenu({ onPick, tourActive }) {
       {open && <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 65 }} />}
       {open && (
         <div style={{ position: "fixed", right: 20, bottom: "calc(96px + env(safe-area-inset-bottom))", zIndex: 71, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-          {[["gasto", "Gasto", COLORS.red, "−"], ["ingreso", "Ingreso", COLORS.green, "+"]].map(([tipo, label, color, sign]) => (
+          {NUEVA_CARGA_OPCIONES.map(([tipo, label, color, sign]) => (
             <button key={tipo} onClick={() => pick(tipo)} style={{
               display: "flex", alignItems: "center", gap: 10, background: COLORS.surface, border: `1px solid ${COLORS.border}`,
               borderRadius: 999, padding: "10px 16px 10px 12px", fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14,
@@ -2888,6 +2974,10 @@ function ProfileRow({ label, sub, onClick, open }) {
 }
 
 function PerfilTab({ user, displayName, waPhone, onConnectWa, onLogout }) {
+  const avatarUrl = avatarOf(user);
+  // Si la URL de Google no carga (link vencido, sin conexión), se cae a las
+  // iniciales en vez de dejar el hueco o el ícono de imagen rota.
+  const [avatarFallo, setAvatarFallo] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nombre, setNombre] = useState(user?.user_metadata?.nombre || "");
   const [apellido, setApellido] = useState(user?.user_metadata?.apellido || "");
@@ -2931,9 +3021,21 @@ function PerfilTab({ user, displayName, waPhone, onConnectWa, onLogout }) {
           explícitamente por el dueño del proyecto (ver PRODUCT.md), no se
           agrega ni el toggle ni la lógica, ni siquiera deshabilitado. */}
       <div style={{ background: `linear-gradient(135deg, ${COLORS.accent} 0%, #002f28 100%)`, borderRadius: 28, padding: "32px 24px 28px", textAlign: "center", boxShadow: `0 12px 48px ${COLORS.accent}28` }}>
-        <div style={{ width: 84, height: 84, borderRadius: "50%", background: "#ffffff22", border: "2px solid #ffffff33", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 700, margin: "0 auto 14px" }}>
-          {(displayName || "?").charAt(0).toUpperCase()}
-        </div>
+        {/* Misma foto de Google que la barra superior (user_metadata.avatar_url
+            / picture). Sin foto -- alta con email -- caen las iniciales. */}
+        {avatarUrl && !avatarFallo ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={() => setAvatarFallo(true)}
+            style={{ width: 84, height: 84, borderRadius: "50%", objectFit: "cover", border: "2px solid #ffffff44", display: "block", margin: "0 auto 14px" }}
+          />
+        ) : (
+          <div style={{ width: 84, height: 84, borderRadius: "50%", background: "#ffffff22", border: "2px solid #ffffff33", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: 700, margin: "0 auto 14px" }}>
+            {(displayName || "?").charAt(0).toUpperCase()}
+          </div>
+        )}
         <div style={{ fontWeight: 800, fontSize: 19, color: "#fff" }}>{displayName}</div>
         <div style={{ fontSize: 13, color: "#ffffffaa", marginTop: 2 }}>{user?.email}</div>
       </div>
@@ -3023,8 +3125,15 @@ const TOUR_STEPS_COPY = {
   },
 };
 
-function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing = null, initialType = "gasto", tourPhase = null }) {
+function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing = null, initialType = "gasto", tourPhase = null, dolarRate = 0 }) {
   const catNames = Object.keys(data.categories);
+  // Alta de ahorro: elegir la meta y decir de dónde sale la plata. No se puede
+  // EDITAR un ahorro desde acá (habría que rehacer el saldo y el historial de la
+  // meta), así que este modo solo aplica al alta.
+  const metas = data.savings || [];
+  const [savingsId, setSavingsId] = useState(metas.length === 1 ? metas[0].id : null);
+  const [origen, setOrigen] = useState("sueldo");
+  const [detalleExtra, setDetalleExtra] = useState("");
   // Durante el tour (ingreso o gasto) la categoría es obligatoria -- no solo
   // el gasto: para un ingreso ninguna categoría por defecto tiene sentido
   // (Vivienda, Alimentación...son todas de gasto), así que dejar que caiga
@@ -3058,11 +3167,26 @@ function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing 
   // ofrece crear (ahorro_meta, sueldo...), se agrega como 3ª opción para no
   // pisarlo sin querer.
   const typeOptions = [{ value: "gasto", label: "Gasto" }, { value: "ingreso", label: "Ingreso" }];
+  if (!editing) typeOptions.push({ value: "ahorro_meta", label: "Ahorro" });
   if (editing && !typeOptions.some(o => o.value === editing.type)) {
-    typeOptions.push({ value: editing.type, label: editing.type });
+    typeOptions.push({ value: editing.type, label: TX_TYPE_LABELS[editing.type] || editing.type });
   }
 
+  const esAhorro = !editing && form.type === "ahorro_meta";
+  const meta = metas.find(m => m.id === savingsId) || null;
+  const metaUsd = !!meta && meta.currency === "usd";
+  const montoAhorro = metaUsd ? parseAmountInputUSD(form.amount) : parseAmountInput(form.amount);
+  const puedeGuardarAhorro = !!meta && montoAhorro > 0;
+
   const add = () => {
+    if (esAhorro) {
+      if (!puedeGuardarAhorro) return;
+      save(buildAhorroDeposit(data, {
+        goal: meta, amt: montoAhorro, origen, detalle: detalleExtra, date: form.date, dolarRate,
+      }));
+      onClose();
+      return;
+    }
     if (!form.amount || !parseAmountInput(form.amount)) return;
     if (requireCategoryChoice && !form.category) return;
     const amount = parseAmountInput(form.amount);
@@ -3088,7 +3212,7 @@ function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing 
   };
 
   return (
-    <BottomSheet title={editing ? "Editar movimiento" : "Nuevo movimiento"} onClose={onClose}>
+    <BottomSheet title={editing ? "Editar movimiento" : esAhorro ? "Guardar en una meta" : "Nuevo movimiento"} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <SegmentedControl
           options={typeOptions}
@@ -3096,12 +3220,41 @@ function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing 
           onChange={v => setForm({ ...form, type: v })}
         />
         <div data-tour="amount-field" style={tourStep === "amount" ? { outline: `3px solid ${COLORS.gold}`, outlineOffset: 4, borderRadius: 16 } : undefined}>
-          <Input label="Monto" value={form.amount} onChange={v => setForm({ ...form, amount: v })} type="amount" prefix="$" placeholder={tourStep === "amount" ? "Ej: 500000" : "0"} />
+          <Input label="Monto" value={form.amount} onChange={v => setForm({ ...form, amount: v })} type="amount" decimals={metaUsd} prefix={metaUsd ? "US$" : "$"} placeholder={tourStep === "amount" ? "Ej: 500000" : "0"} />
           {tourStep === "amount" && (
             <div style={{ fontSize: 12, color: COLORS.goldText, fontWeight: 700, marginTop: 4 }}>{TOUR_STEPS_COPY[tourPhase].amount}</div>
           )}
         </div>
-        <div style={tourStep === "description" ? { outline: `3px solid ${COLORS.gold}`, outlineOffset: 4, borderRadius: 16 } : undefined}>
+        {esAhorro && (
+          metas.length === 0 ? (
+            <InfoBanner>Todavía no tenés metas de ahorro. Creá una en <strong>Ahorros</strong> y después vas a poder guardar plata desde acá.</InfoBanner>
+          ) : (
+            <React.Fragment>
+              <div>
+                <label style={{ fontSize: 11, color: COLORS.accent, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", display: "block", marginBottom: 8 }}>¿A qué meta?</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {metas.map(m => (
+                    <button key={m.id} type="button" onClick={() => {
+                      // El monto solo se limpia si cambia la moneda: ARS y USD
+                      // se escriben distinto (miles vs. decimales). Limpiarlo
+                      // siempre borraba lo que acababas de tipear.
+                      const anterior = metas.find(x => x.id === savingsId);
+                      const cambiaMoneda = (anterior ? anterior.currency === "usd" : false) !== (m.currency === "usd");
+                      setSavingsId(m.id);
+                      if (cambiaMoneda) setForm(f => ({ ...f, amount: "" }));
+                    }} style={{
+                      background: savingsId === m.id ? COLORS.accent : COLORS.pillBg,
+                      color: savingsId === m.id ? "#fff" : COLORS.accent,
+                      border: "none", borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                    }}>{m.name}{m.currency === "usd" ? " (US$)" : ""}</button>
+                  ))}
+                </div>
+              </div>
+              <OrigenAhorro origen={origen} onOrigen={setOrigen} detalle={detalleExtra} onDetalle={setDetalleExtra} />
+            </React.Fragment>
+          )
+        )}
+        <div style={{ ...(tourStep === "description" ? { outline: `3px solid ${COLORS.gold}`, outlineOffset: 4, borderRadius: 16 } : {}), ...(esAhorro ? { display: "none" } : {}) }}>
           <Input label="Descripción" value={form.description} onChange={v => setForm({ ...form, description: v })} placeholder={tourPhase === "income" ? "Ej: Sueldo de septiembre" : "Ej: Supermercado, Netflix..."} />
           {tourStep === "description" && (
             <div style={{ fontSize: 12, color: COLORS.goldText, fontWeight: 700, marginTop: 4 }}>
@@ -3112,7 +3265,7 @@ function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing 
         </div>
         {/* Igual que la app real: las categorías se muestran siempre, sin
             filtrar por Gasto/Ingreso -- es una lista plana compartida. */}
-        <div data-tour="category-picker" style={tourStep === "category" ? { outline: `3px solid ${COLORS.gold}`, outlineOffset: 4, borderRadius: 16 } : undefined}>
+        <div data-tour="category-picker" style={{ ...(tourStep === "category" ? { outline: `3px solid ${COLORS.gold}`, outlineOffset: 4, borderRadius: 16 } : {}), ...(esAhorro ? { display: "none" } : {}) }}>
           <label style={{ fontSize: 11, color: COLORS.accent, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", display: "block", marginBottom: 8 }}>Categoría *</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <button onClick={() => setShowCatForm(s => !s)} style={{ background: COLORS.accent, color: "#fff", border: "none", borderRadius: 999, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>+ Nueva</button>
@@ -3143,7 +3296,7 @@ function NuevaTransaccionSheet({ data, save, savePlain = save, onClose, editing 
           habilitado y tocarlo no hacía nada (add() corta en silencio si
           !form.amount). Ahora el botón refleja de verdad si hay algo para
           guardar -- vale para el tour y para el alta normal. */}
-      <SheetActions onCancel={onClose} onSave={add} saveLabel={editing ? "Guardar cambios" : "Guardar"} saveDisabled={!parseAmountInput(form.amount) || (requireCategoryChoice && !form.category)} saveHighlight={tourStep === "save"} />
+      <SheetActions onCancel={onClose} onSave={add} saveLabel={editing ? "Guardar cambios" : esAhorro ? "Guardar ahorro" : "Guardar"} saveDisabled={esAhorro ? !puedeGuardarAhorro : (!parseAmountInput(form.amount) || (requireCategoryChoice && !form.category))} saveHighlight={tourStep === "save"} />
     </BottomSheet>
   );
 }
@@ -3313,6 +3466,8 @@ function Ahorros({ data, save, dolarRate }) {
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", target: "" });
   const [fromSalary, setFromSalary] = useState(true);
+  // Depósito en curso: { id, origen, detalle }. null = ninguno abierto.
+  const [deposito, setDeposito] = useState(null);
 
   const add = () => {
     if (!form.name || !form.target) return;
@@ -3351,14 +3506,26 @@ function Ahorros({ data, save, dolarRate }) {
     setEditId(null);
   };
 
-  const addToSaving = (id) => {
+  // "+ Agregar" ya no guarda de una: primero abre la pregunta de origen, igual
+  // que "Nueva carga -> Ahorro". Antes solo tocaba savings[] y no dejaba ningún
+  // movimiento, así que la plata que apartabas no bajaba el balance ni aparecía
+  // en Movimientos.
+  const startDeposit = (id) => {
     const g = data.savings.find(x => x.id === id);
     const parse = g && g.currency === "usd" ? parseAmountInputUSD : parseAmountInput;
-    const amt = parse(addAmt[id] || 0);
-    if (!amt) return;
-    const savings = data.savings.map(g => g.id === id ? { ...g, current: (g.current || 0) + amt, history: [...(g.history || []), { date: todayStr(), amount: amt }] } : g);
-    save({ ...data, savings });
-    setAddAmt({ ...addAmt, [id]: "" });
+    if (!g || !parse(addAmt[id] || 0)) return;
+    setDeposito({ id, origen: "sueldo", detalle: "" });
+  };
+  const confirmDeposit = () => {
+    const g = data.savings.find(x => x.id === deposito.id);
+    const parse = g && g.currency === "usd" ? parseAmountInputUSD : parseAmountInput;
+    const amt = parse(addAmt[deposito.id] || 0);
+    if (!g || !amt) return;
+    save(buildAhorroDeposit(data, {
+      goal: g, amt, origen: deposito.origen, detalle: deposito.detalle, date: todayStr(), dolarRate,
+    }));
+    setAddAmt({ ...addAmt, [deposito.id]: "" });
+    setDeposito(null);
   };
 
   const confirmDeleteSaving = () => window.confirm("¿Eliminar esta meta de ahorro?");
@@ -3468,8 +3635,22 @@ function Ahorros({ data, save, dolarRate }) {
                     placeholder={g.currency === "usd" ? "Agregar US$..." : "Agregar monto..."}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "7px 10px", color: COLORS.text, fontFamily: "inherit", fontSize: 13 }}
                   />
-                  <Button onClick={() => addToSaving(g.id)} size="sm">+ Agregar</Button>
+                  <Button onClick={() => startDeposit(g.id)} size="sm">+ Agregar</Button>
                 </div>
+                {deposito && deposito.id === g.id && (
+                  <div className="form-pop" style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${COLORS.border}` }}>
+                    <OrigenAhorro
+                      origen={deposito.origen}
+                      onOrigen={v => setDeposito({ ...deposito, origen: v })}
+                      detalle={deposito.detalle}
+                      onDetalle={v => setDeposito({ ...deposito, detalle: v })}
+                    />
+                    <div className="inline-edit-actions">
+                      <Button onClick={confirmDeposit} size="sm">Guardar ahorro</Button>
+                      <Button onClick={() => setDeposito(null)} variant="ghost" size="sm">Cancelar</Button>
+                    </div>
+                  </div>
+                )}
               </Card>
               )}
               </Removable>
